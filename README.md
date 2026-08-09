@@ -22,7 +22,7 @@
 
 | Skill | 当前版本 | 适合解决什么 | 入口 |
 |---|---:|---|---|
-| **apelican-personaforge** | 1.1.0 | 把 REST API、单个或多个 MCP 服务整理成 ChatGPT 更容易发现和正确调用的 MCP 插件 | [查看介绍](#apelican-personaforge) |
+| **apelican-personaforge** | 1.2.0 | 把已有的 MCP、技能接口和 API 转成 ChatGPT 个人插件，让你在日常聊天中直接调用 | [查看介绍](#apelican-personaforge) |
 
 ## 怎么安装
 
@@ -60,19 +60,20 @@ cp -R ./apelican-skills/apelican-personaforge ~/.codex/skills/apelican-personafo
 
 ### apelican-personaforge
 
-> 把“接口能返回数据”继续往前做一步：让模型知道什么时候该调用、参数应该怎么填、结果应该怎么读。
+> 把已有能力带进 ChatGPT 对话：不必再回到 WorkBuddy、Codex 或开发环境，也能在聊天中直接调用自己的工具和服务。
 
-这个技能用于把 REST API、单个 MCP 或多个 MCP 服务，整理成 ChatGPT 更容易发现、正确调用并且便于验证的 MCP 插件。
+这个技能主要用于把你已经拥有的 MCP 服务、技能背后的可调用接口和 REST API，转化为 ChatGPT 可以连接的个人插件。它的重点不是单纯优化 MCP 的“可发现性”，而是让原本只能在 WorkBuddy、Codex 或开发环境中使用的能力，可以直接进入日常 ChatGPT 对话。
 
 它适合这些场景：
 
-- 把一个 REST API 接入 ChatGPT。
-- 代理或部署一个已有的 MCP 服务。
-- 把大量 MCP 工具整理成更容易选择的一组工具。
+- 把已有的 REST API 封装成 ChatGPT 个人插件。
+- 把单个或多个 MCP 服务接入日常 ChatGPT 对话。
+- 把技能背后的可调用接口变成 ChatGPT 可以使用的工具。
+- 让原本依赖 WorkBuddy、Codex 或开发环境的能力，在普通聊天中也能直接调用。
 - 检查工具元数据、`search` / `fetch`、OAuth 2.1 和公开插件边界。
 - 使用 Cloudflare Workers 或 OpenAI Secure MCP Tunnel 完成部署与验证。
 
-技能会先确认上游类型、使用目标和部署位置，再继续实现。凭证只确认名称和获取方式，不要求把密钥贴进聊天。
+如果某个 Skill 只有提示词或 Markdown 流程、没有可调用接口，需要先把对应能力实现成 API 或 MCP，不能直接把技能文件本身当作插件。技能会先确认上游类型、使用目标和部署位置，再继续实现；凭证只确认名称和获取方式，不要求把密钥贴进聊天。
 
 [查看完整 SKILL.md](./apelican-personaforge/SKILL.md) · [查看使用说明](./apelican-personaforge/skill-card.md)
 

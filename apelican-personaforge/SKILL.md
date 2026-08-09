@@ -1,11 +1,13 @@
 ---
 name: apelican-personaforge
-description: 将 REST API、单个或多个 MCP 服务铸造成 ChatGPT 易于发现和正确调用的高质量 MCP 插件；覆盖 Cloudflare Workers、公网 OAuth 2.1、OpenAI Secure MCP Tunnel、工具元数据、search/fetch 知识检索、跨平台部署、验证与回滚。用户要求接入 API、部署或代理 MCP、创建 ChatGPT 插件、聚合大量工具、检查 OpenAI 插件规范或指导零基础部署时使用。
+description: 将已有的 REST API、单个或多个 MCP 服务，以及技能背后的可调用接口转化为 ChatGPT 个人插件，让原本位于 WorkBuddy、Codex 或开发环境中的能力可以在日常聊天中直接使用；覆盖 Cloudflare Workers、公网 OAuth 2.1、OpenAI Secure MCP Tunnel、工具元数据、search/fetch 知识检索、跨平台部署、验证与回滚。用户要求把现有 API、MCP 或技能接口接入 ChatGPT 对话时使用。
 ---
 
-# Plugin Forge 1.1.0
+# Plugin Forge 1.2.0
 
-把“能返回数据的接口”做成“模型选得对、参数填得对、结果读得懂、部署可验证”的 MCP 插件。
+把已有的 MCP、技能背后的可调用接口和 REST API 转化为 ChatGPT 个人插件，让这些能力不再局限于 WorkBuddy、Codex 或开发环境，而能在日常 ChatGPT 对话中直接使用。
+
+这里的“技能接口”指技能背后已经可以通过程序调用的能力。只有提示词或 Markdown 流程、没有可调用接口的 Skill，需要先实现为 API 或 MCP，不能直接把技能文件本身当作插件。
 
 本技能不依赖其他 Codex 插件。只使用用户机器上可获得的 Node.js、npm、Cloudflare Wrangler、标准 HTTP 工具，以及用户主动选择时使用的 OpenAI Secure MCP Tunnel。
 

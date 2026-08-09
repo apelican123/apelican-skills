@@ -1,10 +1,15 @@
 # Plugin Forge / 插件铸造器
 
-**版本：1.1.0**
+**版本：1.2.0**
 
-把 REST API、单个 MCP 或多个 MCP 服务，转换为 ChatGPT 容易发现、正确调用且便于验证的 MCP 插件。
+把已有的 MCP、技能背后的可调用接口和 REST API 转化为 ChatGPT 个人插件，让原本位于 WorkBuddy、Codex 或开发环境中的能力可以在日常聊天中直接使用。
 
-## 1.1.0 重点
+## 1.2.0 更新
+
+- 修正技能定位：核心用途是把已有能力带进 ChatGPT 日常对话，而不是单纯提高 MCP 的工具可发现性。
+- 明确技能转换边界：只有提示词或 Markdown 流程、没有可调用接口的 Skill，需要先实现为 API 或 MCP。
+
+## 1.1.0 已有能力
 
 - 增加 OpenAI 插件规范：server instructions、工具 title/description、输入/输出 schema、structuredContent、annotations、标准 search/fetch、OAuth 2.1 与公开审核边界。
 - 将主技能缩短为可路由流程，详细内容按需读取，降低上下文占用。
@@ -20,6 +25,8 @@
 
 - “把这个 REST API 部署成 ChatGPT 可调用的 MCP。”
 - “代理这个带 Token 的 MCP，并部署到 Cloudflare Workers。”
+- “把这个技能背后的 API 接口转成我的 ChatGPT 个人插件。”
+- “让我在普通 ChatGPT 对话里直接使用这个原本只能在 Codex 中调用的服务。”
 - “把很多 MCP 工具整理成少量 GPT 容易选择的工具。”
 - “检查我的 MCP 是否符合 OpenAI 插件规范。”
 
