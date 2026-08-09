@@ -4,7 +4,7 @@
 
 ### 一些我根据自己的需要，慢慢做出来的 AI Skills
 
-[目前收录](#目前收录) · [怎么安装](#怎么安装) · [反馈与建议](https://github.com/yelican/apelican-skills/issues)
+[目前收录](#目前收录) · [怎么安装](#怎么安装) · [反馈与建议](https://github.com/apelican123/apelican-skills/issues)
 
 </div>
 
@@ -30,7 +30,7 @@
 
 ```text
 请帮我安装这个 Skill：
-https://github.com/yelican/apelican-skills/tree/main/apelican-personaforge
+https://github.com/apelican123/apelican-skills/tree/main/apelican-personaforge
 ```
 
 Agent 会把技能放到它实际使用的 skills 目录。如果你的客户端不支持自动安装，也可以手动复制。
@@ -41,14 +41,14 @@ Agent 会把技能放到它实际使用的 skills 目录。如果你的客户端
 ### Windows PowerShell
 
 ```powershell
-git clone https://github.com/yelican/apelican-skills.git
+git clone https://github.com/apelican123/apelican-skills.git
 Copy-Item ".\apelican-skills\apelican-personaforge" "$env:USERPROFILE\.codex\skills\apelican-personaforge" -Recurse
 ```
 
 ### macOS / Linux
 
 ```bash
-git clone https://github.com/yelican/apelican-skills.git
+git clone https://github.com/apelican123/apelican-skills.git
 cp -R ./apelican-skills/apelican-personaforge ~/.codex/skills/apelican-personaforge
 ```
 
@@ -78,12 +78,12 @@ cp -R ./apelican-skills/apelican-personaforge ~/.codex/skills/apelican-personafo
 
 ## 反馈与建议
 
-如果你在使用时遇到问题，或者觉得某个地方还可以继续改，可以在 [Issues](https://github.com/yelican/apelican-skills/issues) 里告诉我。我会根据自己的实际使用和需要，慢慢把这些技能补得更好一些。
+如果你在使用时遇到问题，或者觉得某个地方还可以继续改，可以在 [Issues](https://github.com/apelican123/apelican-skills/issues) 里告诉我。我会根据自己的实际使用和需要，慢慢把这些技能补得更好一些。
 
 ---
 
 <div align="center">
 
-慢慢做，也慢慢改。
+让AI为你所用
 
 </div>
