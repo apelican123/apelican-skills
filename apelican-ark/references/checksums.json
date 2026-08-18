@@ -1,0 +1,10 @@
+{
+  "algorithm": "SHA-256",
+  "sha256": {
+    "scripts/ark_backup.py": "83835c56f6f420d8ed42653bd8243fe45e5189a5069f3cb77b307e33b5fa7189",
+    "scripts/ark_common.py": "627563fbc297d1adaaa9efb8c59b620fa4a4c1424367edcda41724ad7b15291e",
+    "scripts/ark_restore.py": "410d0186afd79ded5ea34c10c992a4b22365da6750e6c659f4359a4b070a045a",
+    "scripts/ark_selfcheck.py": "255ec4cc36440cff3f9a0d4c23fa7b06685b8dabb271665456ecb793485e03be",
+    "scripts/ark_verify.py": "60d252f2bb21860e7d066b6ef97a822cb954e975e608e102ffc4622414c906ec"
+  }
+}
