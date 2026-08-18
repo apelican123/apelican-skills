@@ -22,7 +22,7 @@
 
 | Skill | 当前版本 | 适合解决什么 | 入口 |
 |---|---:|---|---|
-| **apelican-personaforge** | 1.2.0 | 把已有的 MCP、技能接口和 API 转成 ChatGPT 个人插件，让你在日常聊天中直接调用 | [查看介绍](#apelican-personaforge) |
+| **apelican-personaforge** | 2.0.0 | 把已有的 API 或 MCP 接进 ChatGPT；不用先懂术语，技能会一步一步带你完成 | [查看介绍](#apelican-personaforge) |
 
 ## 怎么安装
 
@@ -60,20 +60,32 @@ cp -R ./apelican-skills/apelican-personaforge ~/.codex/skills/apelican-personafo
 
 ### apelican-personaforge
 
-> 把已有能力带进 ChatGPT 对话：不必再回到 WorkBuddy、Codex 或开发环境，也能在聊天中直接调用自己的工具和服务。
+> 把你已经有的 API、MCP 或技能接口接进 ChatGPT，变成平时聊天时就能直接使用的个人插件。
 
-这个技能主要用于把你已经拥有的 MCP 服务、技能背后的可调用接口和 REST API，转化为 ChatGPT 可以连接的个人插件。它的重点不是单纯优化 MCP 的“可发现性”，而是让原本只能在 WorkBuddy、Codex 或开发环境中使用的能力，可以直接进入日常 ChatGPT 对话。
+我最开始做这个技能，是因为有些能力已经能在 Codex、WorkBuddy 或开发环境里调用，但回到普通 ChatGPT 对话时又用不上。现在只要它背后确实有 API 或 MCP 接口，这个技能就可以带你把它接进来。
 
-它适合这些场景：
+2.0 主要把使用过程重新做了一遍。你不需要先弄懂“隧道、MCP、OAuth”这些词，也不用一开始自己选择技术方案。技能会先问你想在 ChatGPT 里完成什么，再一次推进一个可以检查的步骤：刚做了什么、应该看到什么、下一步是什么，出现不同结果时又该怎么处理。
 
-- 把已有的 REST API 封装成 ChatGPT 个人插件。
-- 把单个或多个 MCP 服务接入日常 ChatGPT 对话。
-- 把技能背后的可调用接口变成 ChatGPT 可以使用的工具。
-- 让原本依赖 WorkBuddy、Codex 或开发环境的能力，在普通聊天中也能直接调用。
-- 检查工具元数据、`search` / `fetch`、OAuth 2.1 和公开插件边界。
-- 使用 Cloudflare Workers 或 OpenAI Secure MCP Tunnel 完成部署与验证。
+私人使用时，默认会为每个人生成一条不同的专属能力链接。你在 ChatGPT 里选择“无身份验证”，粘贴完整链接就可以继续；真正的验证在 Cloudflare 完成。用户名只用来生成可识别的标签，访问密钥来自独立的高强度随机数，不会用用户名直接当密码。
 
-如果某个 Skill 只有提示词或 Markdown 流程、没有可调用接口，需要先把对应能力实现成 API 或 MCP，不能直接把技能文件本身当作插件。技能会先确认上游类型、使用目标和部署位置，再继续实现；凭证只确认名称和获取方式，不要求把密钥贴进聊天。
+它适合这些情况：
+
+- 把已有的 REST API 做成 ChatGPT 可以调用的工具。
+- 把一个或多个 MCP 服务接进日常 ChatGPT 对话。
+- 把 Skill 背后已经存在的可调用接口变成个人插件。
+- 给自己或少量可信用户创建彼此独立的能力链接。
+- 检查工具说明、参数、读写权限和返回结果是否容易被 ChatGPT 正确使用。
+- 需要更多用户或准备公开上架时，继续完成 OAuth 2.1 和公开审核准备。
+- 本机或内网能力需要接入时，使用 OpenAI Secure MCP Tunnel。
+
+有几个边界需要提前知道：
+
+- 完整专属链接本身就是访问密钥，不能截图、公开或转发；泄露后要立即撤销和轮换。
+- 一人一链接只保护入口。如果底层数据本来按用户区分，还需要每个人自己的上游身份或权限，不能让所有人共用一个能读取全部数据的管理员密钥。
+- 只有提示词或 Markdown 流程、没有可调用接口的 Skill，不能直接变成远程插件；要先把对应能力实现成 API 或 MCP。
+- 私人链接在 Developer mode 里能用，不代表已经通过 OpenAI 的公开审核。
+
+公开包里保留了两个 JavaScript 小工具：一个生成用户专属链接，一个检查 MCP 握手、工具信息、错误链接和跨用户隔离。现在小红书技能上传已经支持 JavaScript 等多种文件，所以没有再把这些可执行工具强行改成纯 Markdown。
 
 [查看完整 SKILL.md](./apelican-personaforge/SKILL.md) · [查看使用说明](./apelican-personaforge/skill-card.md)
 

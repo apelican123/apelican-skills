@@ -1,71 +1,91 @@
-# 验证与发布门槛
+# 验证与发布
 
-## 部署前
+## 自动审计
 
-| 步骤 | 操作 | 通过证据 | 失败时 |
-|---|---|---|---|
-| 1 | 检查 Node/npm/Wrangler 版本 | 三条命令状态码 0，版本满足当前依赖 | 更新环境并重开终端 |
-| 2 | `npm install`、`npm ls --depth=0` | 无 unmet dependency | 核对官方版本，不默认绕过 peer dependency |
-| 3 | 类型或语法检查 | `tsc --noEmit` 状态码 0 | 修代码，不关闭 strict 掩盖错误 |
-| 4 | Wrangler dry-run | 状态码 0、入口/绑定符合预期、未生产部署 | 修配置，不进入部署 |
-| 5 | 扫描占位符、凭证、私人路径 | 生产路径无命中 | 替换/脱敏后重扫 |
-| 6 | 保存生产基线 | 当前 version ID、URL、工具数、auth/init/list/call 结果齐全 | 无基线时先只读盘点 |
+脚本包使用页面明确支持的 `.js` 文件，不需要把所有代码压进 Markdown。新文档统一使用 `audit-mcp.js`。
 
-安装验证通过后，实际项目应记录 `npm ls --depth=0` 的解析版本并保留 lockfile；公开技能模板
-可以使用 `latest` 提醒生成者核对当前官方版本，但生产部署不能在未回归时漂移依赖。
+### 专属能力链接
 
-## 协议验证
+把真实 URL 只放入当前终端进程。`MCP_INVALID_URL` 使用同一用户路径但错误 Token；多人 Worker 再提供 `MCP_CROSS_USER_URL`，把 A 的 Token 拼到 B 的用户路径，预期也被拒绝。
 
-依次验证：
+```powershell
+$env:MCP_URL="https://service.example.com/u/<用户A>/<真实随机TokenA>/mcp"
+$env:MCP_INVALID_URL="https://service.example.com/u/<用户A>/<错误随机Token>/mcp"
+$env:MCP_CROSS_USER_URL="https://service.example.com/u/<用户B>/<真实随机TokenA>/mcp"
+$env:MCP_AUTH_MODE="capability"
+$env:MCP_EXPECT_AUTH="none"
+node <skill-dir>/scripts/audit-mcp.js
+```
 
-- 无认证和错误认证返回 401/403；
-- initialize 返回稳定 serverInfo 和非空 instructions；
-- notifications/initialized 正常；
-- tools/list 无 JSON-RPC error；
-- 每个工具都有 name/title/description/inputSchema/annotations；
-- 声明 outputSchema 的工具实际返回 structuredContent；
-- ping 正常；
-- 每个只读工具至少调用一次正常输入；
-- 关键工具另测空值、越界、上游 4xx/5xx 与超时；
-- 检查 JSON-RPC error 和 result.isError，不能只看 HTTP 200。
+macOS / Linux：
 
-写工具不加入自动 fixture。用 dry-run、用户确认、实际执行、读回四步验证。
+```bash
+MCP_URL="https://service.example.com/u/<用户A>/<真实随机TokenA>/mcp" \
+MCP_INVALID_URL="https://service.example.com/u/<用户A>/<错误随机Token>/mcp" \
+MCP_CROSS_USER_URL="https://service.example.com/u/<用户B>/<真实随机TokenA>/mcp" \
+MCP_AUTH_MODE="capability" \
+MCP_EXPECT_AUTH="none" \
+node <skill-dir>/scripts/audit-mcp.js
+```
 
-## 生产发布
+单人独立 Worker 可省略 `MCP_CROSS_USER_URL`；错误 Token 测试仍必做。审计输出不得回显任何 URL。
 
-1. 单个 Worker 部署，不把多个服务绑成一次变更。
-   - **验证**：部署输出只含目标 Worker；记录新 version ID。
-2. 等待边缘传播。
-   - **验证**：`deployments status` 出现新版本，`/health` 命中目标服务。
-3. 对生产 URL 重跑 auth/init/initialized/ping/list/call。
-   - **验证**：与部署前基线对照；工具缺失、重命名或 schema 变化必须解释。
-4. 查看脱敏后的日志。
-   - **验证**：无 Authorization、cookie、token、私人正文或内部 URL。
-5. 做模型选择回归。
-   - **验证**：一个应调用提示选对工具，一个不应调用提示不误选。
-6. 在第二设备或第二客户端做只读回归（目标要求多设备时）。
-   - **验证**：工具数量和只读结果关键字段一致。
-7. 失败只回滚该 Worker。
-   - **验证**：旧 version 恢复后再次通过 auth/init/list/call；其他 Worker 版本未变化。
+### OAuth
 
-## 公开插件额外要求
+```powershell
+$env:MCP_URL="https://service.example.com/mcp"
+$env:MCP_TOKEN="仅在当前进程中设置"
+$env:MCP_AUTH_MODE="bearer"
+$env:MCP_EXPECT_AUTH="oauth2"
+node <skill-dir>/scripts/audit-mcp.js
+```
 
-- OAuth 2.1、PKCE、scope 与重定向 URI验证；
-- 工具级 securitySchemes；
-- 隐私政策、支持链接、品牌资料；
-- 可复现的审核账号/步骤；
-- 生产 URL 长期可访问，不依赖本机 Tunnel；
-- 提交前重新核对 OpenAI 最新 app review 清单。
+### 真实只读 fixture
 
-报告时把“私人可用”和“公开审核准备完成”分开，不能混称。
+可设置 `MCP_FIXTURES` 指向 JSON 文件：
 
-## 发布技能包
+```json
+{
+  "search": { "query": "test" },
+  "fetch": { "id": "known-safe-id" }
+}
+```
 
-1. 运行技能结构校验。
-2. 验证包内仅包含必要 Markdown，无 README、Secret、缓存、日志或真实部署配置。
-3. 检查所有相对链接和外部官方链接。
-4. 对照 [compatibility-and-regression.md](compatibility-and-regression.md) 完成回归矩阵。
-5. 创建版本化 ZIP，计算 SHA-256。
-6. 解压到临时目录，重新验证根目录层级、文件清单、逐文件哈希和技能结构。
+fixture 只能包含无副作用调用。写操作单独走 dry-run、确认、执行和读回；fixture 文件不得包含真实 URL、Token 或私人数据。
 
-只有解压后复验也通过，才把 ZIP 标记为发布候选。
+## 审计通过条件
+
+- 错误 Token、未知用户和跨用户错配均被拒绝；正确用户链接成功；
+- OAuth 模式的 protected-resource 与 authorization-server metadata 可发现，PKCE 包含 `S256`；专属链接模式跳过 OAuth 发现；
+- `initialize` 有稳定 `serverInfo` 和非空 `instructions`；
+- `tools/list` 无 JSON-RPC error；
+- 每个工具有 name/title/description/inputSchema/annotations；
+- `securitySchemes` 与专属链接/no-auth/OAuth 模式及 scope 一致；
+- 有 `outputSchema` 的工具返回匹配的 `structuredContent`；
+- fixture 无 JSON-RPC error、无 `isError`；
+- `search`/`fetch` 存在时符合当前 OpenAI 公司知识约定。
+
+## 部署门槛
+
+1. 记录当前生产 version ID；
+2. `node --check`、测试或 `tsc --noEmit`；
+3. `wrangler deploy --dry-run`；
+4. 单服务部署，不同时批量改多个 Worker；
+5. 等待边缘传播；
+6. 用生产 URL 运行审计、错误链接、跨用户错配和真实只读 fixture；
+7. 在 ChatGPT 验证：专属链接使用“无身份验证”，OAuth 服务使用 OAuth，Tunnel 使用对应 Tunnel 入口；
+8. 做一条自然语言的真实只读调用，而不只确认工具列表；
+9. 检查日志没有密钥、完整专属 URL、堆栈和私人数据；
+10. 交付每位用户独立的撤销/轮换方法；
+11. 失败只回滚当前 Worker。
+
+## 公开发布的额外门槛
+
+- OAuth 2.1 全流程与用户/scope 隔离；
+- 隐私政策、支持链接、品牌素材和准确权限说明；
+- 稳定公网 HTTPS 服务，不依赖本机 Tunnel 或私人能力链接；
+- 工具副作用、开放网络访问和确认体验与真实行为一致；
+- 测试账号、审核说明和代表性提示可复现；
+- 按最新 OpenAI plugin submission/review 清单重新核对。
+
+“私人链接可用”“少量用户隔离通过”和“公开审核通过”是三个不同结论，必须分别报告。

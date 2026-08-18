@@ -1,187 +1,227 @@
-# 故障排查
+# 常见问题排查
 
-先判断失败层级：环境 → Cloudflare → 认证 → MCP 协议 → 上游 → ChatGPT。
+先判断故障在哪一层，不要同时改 Cloudflare、MCP 协议和 ChatGPT 配置：
 
-## 目录
+1. 本机环境；
+2. Cloudflare 登录/部署；
+3. 用户专属链接校验；
+4. MCP 初始化和工具；
+5. 上游 API/MCP；
+6. ChatGPT 页面或工作区权限；
+7. OAuth/公开审核。
 
-- 环境与命令：Node/npm、curl/PowerShell、Wrangler、代理、Windows 文件锁
-- 部署与配置：dry-run、Worker 名称、Secret、占位符
-- MCP 协议：initialize、tools/list、HTTP 200 内错误、session、SSE
-- 认证：私人入口兼容、上游 401/403、凭证分层
-- 模式 C：空目录、同名工具、部分上游失败
-- ChatGPT 与设备：模型误选、连接失败、移动/第二设备、套餐与审核
-- 日志：脱敏 tail 与停止调试
+每次只改变一项，改后重跑相邻验证门。
 
-## Node/npm 不存在
+## 本机环境
 
-从 https://nodejs.org 安装当前 LTS，关闭并重开终端：
+### `node`、`npm` 或 `npx` 找不到
 
-```bash
+安装当前 Node.js LTS，关闭并重新打开终端，然后运行：
+
+```powershell
 node --version
 npm --version
+npx --version
 ```
 
-不要通过关闭 TypeScript strict 来掩盖依赖或类型错误。
+macOS / Linux 使用同样命令。版本要求以项目 `package.json`、所选 SDK 和 Cloudflare 当前文档为准，不把旧文档中的固定版本当永久规则。
 
-## Wrangler 登录失败
+### Wrangler 未登录或浏览器没有弹出
 
-```bash
-npx wrangler@latest login
+```powershell
 npx wrangler@latest whoami
+npx wrangler@latest login
 ```
 
-浏览器未打开时复制终端授权 URL。代理网络下检查 HTTPS_PROXY，但不要把代理凭证写进仓库。
+如果终端显示授权 URL 但没有自动打开，手动复制到已登录 Cloudflare 的浏览器。公司网络/VPN 阻断时先换受信任网络或按组织规则配置代理；不要把 Cloudflare API Token 贴进聊天。
 
-## dry-run 或部署失败
+### Windows 中 `curl` 参数不工作
 
-依次检查：
+PowerShell 的 `curl` 可能映射到 `Invoke-WebRequest`。使用 `curl.exe`，或直接运行随包的 `scripts/audit-mcp.js`。手动测试时不要把真实专属 URL写进脚本文件或终端历史共享记录。
 
-- Worker 名称仅小写字母、数字、连字符；
-- compatibility_date 不是未来日期；
-- package import 与安装版本一致；
-- `wrangler.jsonc` 是合法 JSONC；
-- 当前目录确实包含配置和 src/index.ts；
-- Windows 文件被锁时，先关闭占用进程，再删除项目内 `.wrangler` 临时目录。
+## 生成用户链接
 
-## Secret 设置后仍 401
+### 生成器提示缺少参数
 
-1. `npx wrangler@latest secret list` 检查名称；
-2. 名称必须与 `env.API_KEY` 等字段完全一致；
-3. 重新交互设置，避免命令历史；
-4. 等待边缘传播；
-5. 检查代码是否 fail closed 且读取了正确 header；
-6. 不打印 secret 值排错。
+必须同时提供用户名和 HTTPS Worker 域名：
 
-## initialize 失败
+```powershell
+node <skill-dir>\scripts\create-user-link.js `
+  --username "你的用户名" `
+  --base-url "https://你的-worker-域名"
+```
 
-- Accept 同时包含 JSON 和 text/event-stream；
-- response 是合法 JSON 或 SSE `data:` 帧；
-- serverInfo.name/version 存在；
-- instructions 是字符串；
-- 不强制客户端只能使用一个旧协议版本；
-- ping 与 notifications/initialized 正常。
+用户名可以含中文；无法转成拉丁标签时会使用 `user-<短哈希>`，不会拿用户名当 Token。
 
-## tools/list 报 schema 错误
+### 同一用户名生成了不同链接，是不是坏了？
 
-- inputSchema/outputSchema 根必须为 object；
-- 不把原始 JSON Schema 传给只接受 Zod/Standard Schema 的 SDK API；
-- 用当前 SDK 类型检查确认 registerTool/update 的参数形式；
-- outputSchema 声明后，调用必须返回匹配的 structuredContent。
+不是。`userId` 应保持稳定，随机 Token 每次都必须不同。重新生成并替换同名 Secret 就是轮换；替换后旧链接应失败。
 
-## HTTP 200 但调用失败
+### 不同用户名看起来相近
 
-解析正文并检查：
+短哈希用于区分规范化后可能相近的用户名。不要手工删除哈希，也不要自行复制别人的 `userId`；最终以生成器输出为准。
 
-- 顶层 `error`：JSON-RPC 失败；
-- `result.isError`：工具业务失败；
-- content 只有错误文本但没设 isError：修正工具实现；
-- structuredContent 缺失或不匹配 schema。
+### 输出被保存到终端日志了
 
-## 上游 Missing session ID
+把完整链接视为已泄露：先删除或替换该用户 Secret，确认旧链接 401/403/404，再生成新链接。清理终端/集中日志只能作为后续处理，不能代替撤销。
 
-initialize 响应头若有 `mcp-session-id`，initialized/list/call 都要回带。多个上游分别维护；session 失效只重建一次。
+## Cloudflare Secret 和部署
 
-## 超时或内存错误
+### Secret 设置后仍然 401/404
 
-- 设置 AbortController 超时；
-- 限制并发；
-- 大响应流式透传；
-- 需要解析时有界读取；
-- 列表分页，文档分块；
-- 不无限重试。
+按顺序检查：
 
-## GPT 不调用或选错工具
+1. `secretName` 与生成器输出完全一致，大小写和下划线没有手改；
+2. 粘贴的是 `secretValue`（64 位摘要），不是完整 URL 或原始 Token；
+3. `npx wrangler@latest secret list` 能看到该名称；
+4. Worker 代码使用同样的 `secretBinding(userId)` 规则；
+5. 部署的是刚更新的 Worker 版本；
+6. 等待短暂边缘传播后再测。
+
+Secret 值无法读回是正常的。不要为了核对而把摘要写进 `wrangler.toml`、`.env` 或 Git。
+
+### Worker 名称无效或已存在
+
+Worker 名称使用当前 Cloudflare 允许的格式，通常为小写字母、数字和连字符。名称冲突时改成新的可识别名称，不删除现有 Worker，除非用户明确确认目标和恢复路径。
+
+### `deploy --dry-run` 通过但生产失败
+
+dry-run 不证明生产 Secrets、域名路由和上游网络可用。检查：
+
+- 当前 Cloudflare 账号和目标环境；
+- Secret 名称是否存在于生产环境；
+- 自定义域名/DNS 是否已生效；
+- 上游是否允许 Cloudflare 出口请求；
+- 最新部署 version ID 与预期是否一致。
+
+失败时回滚单个 Worker 到部署前记录的 version ID，不连带回滚其他服务。
+
+### Windows `.wrangler` 缓存写入失败
+
+先关闭占用项目文件的编辑器、终端和杀毒扫描，确认项目目录可写，再重试。若确需清理缓存，先确认 `.wrangler` 的解析后绝对路径位于当前项目中，并把它移动到任务专用临时隔离目录；不要对模糊变量或上级目录运行递归删除。
+
+## 专属链接返回 401、403 或 404
+
+这三个状态都可以用于 fail closed，先分清请求是否本来就应该失败。
+
+### 正确链接也失败
 
 检查：
 
-- server instructions 前 512 字符是否包含最关键选择规则；
-- 工具 name 是否动作导向；
-- title/description 是否说明“何时用/何时不用”；
-- 相似工具是否太多；
-- 参数是否要求模型填写内部信息；
-- 是否应将巨大目录压缩成任务型工具。
+1. URL 没有换行、空格、引号或被聊天软件截断；
+2. 路径严格为 `/u/<userId>/<43字符Token>/mcp`；
+3. `userId` 与 Secret binding 对应；
+4. Token 是生成器当次输出的链接内容，未与旧轮换版本混用；
+5. Worker 没有把完整路径交给错误的路由；
+6. 生产环境存在对应摘要 Secret。
 
-## 能 curl 但 ChatGPT 连不上
+不要通过临时开放固定 `/mcp` 来“证明服务能用”；这会绕开需要验证的安全层。
 
-curl 成功只说明 HTTP 可达。继续检查 SSE/JSON 语义、协议协商、ping、notification、session、工具 schema 与认证方式。优先复用当前 SDK/Cloudflare 官方 handler，不手搓不完整协议。
+### 错误 Token 反而成功
 
-## Bearer 可用，但旧客户端仍然 401
+立即停止接入和发布。常见原因：
 
-先确认旧客户端是否只能把 token 放在 URL 或 `X-API-Key`。私人部署可分别开启
-`ALLOW_LEGACY_QUERY_TOKEN=true` 或 `ALLOW_API_KEY_HEADER=true`，重新部署后用
-initialize、tools/list 和 tools/call 三段请求验证。不要为了兼容而取消鉴权；公开
-插件也不要把这些共享 token 路径当 OAuth 替代品。
+- 认证失败分支返回了 `true`；
+- 没有 Secret 时默认放行；
+- 只检查路径格式，没比较摘要；
+- MCP handler 在认证之前已经执行；
+- 固定 `/mcp` 仍公开可用。
 
-## Worker 能认证，调用上游却是 401/403
+修复后重跑错误 Token、未知用户名和跨用户错配三项测试。
 
-这是两层认证混淆。`MCP_AUTH_TOKEN` 只验证客户端到 Worker；上游可能要求 Bearer、
-自定义 API-Key Header、Basic、query token、OAuth access token、HMAC 或其他签名。
-按上游文档选择适配器，并确认 Header 名称、前缀、scope、受众和过期时间。
+### A 的 Token 放到 B 的路径也成功
 
-## 查看日志
+说明多用户没有真正隔离。检查 Worker 是否按 URL 中的 B `userId` 读取 B 的摘要，而不是使用全局共享 Token。修复前不要给第二位用户交付链接。
 
-```bash
-npx wrangler@latest tail
-```
+### 每个人链接不同，但仍能看到彼此数据
 
-日志必须脱敏。排错完成后删除临时调试输出，不记录 Authorization、cookie、token 或私人正文。
+入口隔离成功不等于上游数据隔离。若 Worker 对所有 `userId` 使用同一个管理员 API Key，用户仍可能访问同一数据。需要按 `userId` 映射独立上游凭据/scope，或切换 OAuth 2.1。
 
-## 没有 curl 或不熟悉命令行
+## MCP 协议和工具
 
-Windows 使用 `Invoke-WebRequest`；macOS/Linux 使用 curl；也可运行：
+### HTTP 200 但审计失败
 
-```bash
-npx @modelcontextprotocol/inspector@latest
-```
+MCP 错误可能在 JSON-RPC body 或 `result.isError` 中。查看审计输出的 `failures`，不要只看 HTTP 状态。
 
-Inspector 仍需正确 URL 和认证。看到界面不代表协议通过，必须完成 init/list/call。
+### `initialize` 失败
 
-## Node 太旧或命令不存在
+检查：
 
-安装当前 Node.js LTS 后关闭并重开终端。Windows 用 `Get-Command node,npm`，
-macOS/Linux 用 `command -v node npm` 确认命令来自预期安装位置，再检查版本。
+- 端点支持 Streamable HTTP；
+- 请求 `Accept` 包含 `application/json, text/event-stream`；
+- 协议版本在客户端和服务器支持范围；
+- 返回稳定 `serverInfo` 和非空 `instructions`；
+- 有状态旧服务是否要求 `mcp-session-id`。
 
-## Wrangler 命令不存在或浏览器登录无反应
+新 stateless Worker 优先使用 Cloudflare 当前 `createMcpHandler`。旧 `McpAgent`/legacy transport 只在有明确兼容需求时保留迁移通道。
 
-优先使用 `npx wrangler@latest`，避免依赖全局安装。浏览器未打开时复制终端授权 URL；
-完成后必须用 `whoami` 读回账号。公司代理/VPN 下先确认 HTTPS 访问，代理凭证不得写进项目。
+### `tools/list` 为空
 
-## Windows 的 `.wrangler` 写入或锁定错误
+逐层检查：
 
-确认当前目录有写权限并关闭仍占用项目的 dev/编辑器进程。只处理当前项目内的 `.wrangler`
-临时目录，不删除用户目录、仓库根目录或其他项目缓存。重新 dry-run 后才继续。
+1. 上游能否独立 `initialize` 和 `tools/list`；
+2. 上游 Secret 是否存在且未过期；
+3. 工具注册代码是否执行；
+4. 有状态上游的 session header 是否回带；
+5. 多 MCP 枚举是否因单个超时被整体中断；
+6. 缓存是否需要主动刷新。
 
-## Worker 名称无效或已存在
+### 有工具但 ChatGPT 调用失败
 
-名称使用小写字母、数字和连字符。名称已存在时先确认它是否属于本项目；不要为了通过部署
-覆盖陌生 Worker。修改名称后重新核对 URL、Secret 目标和回滚记录。
+检查工具 `description`、输入 schema 和真实 API 参数是否一致；确认返回 `content`，声明 `outputSchema` 时同时返回匹配的 `structuredContent`。写工具的权限和确认注解不能标成只读。
 
-## 上游 URL 或示例占位符未替换
+### SSE 看起来像乱码
 
-部署前扫描 `example.com`、`YYYY-MM-DD`、`<your-`、`tunnel_xxx`。发现任何生产路径占位符
-就停止；不要等 404/500 后再猜是哪一个文件漏改。
+`event:` / `data:` 行是 Server-Sent Events 帧，不一定是错误。使用 MCP Inspector 或审计脚本解析；不要用会把未知大流全部读入内存的临时代码替代生产流式透传。
 
-## tools/list 为空
+### 上游超时或响应太大
 
-按顺序验证上游自身 tools/list、工具是否在创建 server 时注册、schema 转换是否报错、
-模式 C 的目录缓存是否把失败误记为空。空数组可以是真实结果，但必须有上游证据。
+先直接测试上游，再调整有界超时。列表分页、文档分块和响应大小必须有上限；写操作不能因超时盲目重试。
 
-## 模式 C 某些工具缺失或同名
+## ChatGPT 侧
 
-逐个上游单独列举工具，检查并发失败、session、分页、缓存 TTL 和名称冲突映射。
-同名工具必须显式前缀或映射，不能“先到先得”静默覆盖。部分上游失败要返回可定位信息。
+### 找不到 Developer mode 或 Plugins 页面
 
-## SSE 看起来像乱码
+Developer mode 的可用性取决于当前账号、产品界面和工作区策略。按 OpenAI 当前文档检查 **Settings → Security and login**；组织账号还要确认管理员策略。不要把旧版“某个固定套餐一定有/一定没有”写成永久规则。
 
-`data:` 行是事件流帧，不是普通 JSON。透明代理应流式转发；命令行测试要解析事件帧，
-或使用 Inspector。不要为了看起来整齐而对未知大 SSE 调用 `response.text()`。
+### 表单没有“无身份验证”选项
 
-## 手机或第二台设备看不到连接
+先确认当前页面是否把认证方式自动从服务器或连接类型推断。如果页面只要求公网 MCP URL，粘贴专属链接即可，不要额外添加 OAuth 或上游 API Key。若页面明确要求一种本技能未覆盖的认证，停止并按当前官方文档调整，不能选一个近似项硬过。
 
-核对账号、目标工作区、客户端版本、Developer mode/连接器权限和连接是否在当前界面受支持。
-Cloudflare Worker 可跨设备访问；Tunnel 仍要求原主机在线。不要把上游 Secret 复制到第二设备。
+### ChatGPT 显示连接失败，但 MCP Inspector 成功
 
-## 额度、套餐或审核描述不一致
+检查：
 
-删除旧文章中的固定额度结论，查看当前 OpenAI 和 Cloudflare 官方页面及实际控制台。
-私人连接、公开提交、审核通过、移动端可见是四个不同状态，不能互相推断。
+- 工具 schema 和 annotations 是否全部可序列化；
+- 专属链接模式是否残留 OAuth `securitySchemes`；
+- `notifications/initialized`、`ping`、`tools/list` 是否都正常；
+- ChatGPT 是否缓存旧元数据；部署后在连接页面 Refresh，再开新对话测试；
+- 账号或工作区是否允许该连接。
+
+### ChatGPT 不调用工具
+
+先确认连接已在当前对话启用，再用一条自然但明确的请求测试。若仍不调用，检查工具名、title、description、参数说明和正反向测试集；不要仅通过在提示词里强制点名工具来掩盖元数据问题。
+
+### 手机端暂时看不到
+
+先在 OpenAI 当前文档支持的表面完成创建和验证，再检查移动端版本、同一账号/工作区和同步状态。不要把某一旧客户端的页面位置写成跨平台固定入口。
+
+## OAuth 和公开发布
+
+### 未认证请求没有进入登录流程
+
+检查 401 响应的 `WWW-Authenticate`、protected-resource metadata、授权服务器 metadata、PKCE `S256`、CIMD/DCR 或预定义客户端配置，以及 `resource` 参数是否一致。
+
+### scope 不足只返回普通错误文本
+
+工具错误应带 `_meta["mcp/www_authenticate"]` challenge，并准确说明所需 scope。普通 200 文本错误无法让客户端正确发起再授权。
+
+### 私人链接能用，为什么不能公开提交？
+
+私人链接只是 Developer mode 的私人入口。公开插件需要稳定公网域名、OAuth 2.1、组织/个人验证、隐私与支持材料、准确工具权限、测试提示和 OpenAI review。不要用“私人可用”替代“审核通过”。
+
+## 需要提供报错时
+
+可以提供：错误状态、错误消息、发生步骤、Worker version ID、工具名、脱敏后的路径结构和审计 `failures`。
+
+不要提供：完整专属 URL、Token、Secret 值、Authorization header、Cookie、上游私人数据、Cloudflare 账号敏感信息。截图前先遮挡这些内容。

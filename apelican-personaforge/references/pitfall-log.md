@@ -1,17 +1,6 @@
-# 历史踩坑记录与解决方案
+# 踩坑记录与解决方案
 
-## 目录
-
-- #1–#5：SDK、依赖与废弃 API
-- #6–#12：SSE、认证、Secret、冷启动与响应解析
-- #13–#18：名称、环境、工具冲突、模型选择与上游 Token
-- #19–#28：超时、缓存、JSON-RPC、占位符、跨平台与额度
-- #29–#32：有状态 session、协议偏差、传输差异与 Windows Wrangler
-
-这些条目是历史证据。执行前先读当前 [templates.md](templates.md)、
-[validation-and-release.md](validation-and-release.md) 和官方文档；历史代码不得覆盖当前规范。
-
-> 共 32 条。它们保留问题证据和迁移背景；包版本、协议版本、套餐、价格、认证与 CLI 命令可能已变化。1.1.0 实施时以 `openai-plugin-contract.md`、`templates.md`、`security-checklist.md` 和当前官方文档为准，本文件不得覆盖现行规范。
+> 共 32 条。按发现时间编号，#19-#28 为对抗式审查新增，#29-#32 为有状态上游 MCP（tikhub 聚合）实战新增。
 
 ## 1. agents 包版本不存在
 
@@ -66,10 +55,9 @@ deleted_classes = ["YourOldClassName"]
 TypeError: this.server.tool is not a function
 ```
 
-**历史原因**：当时使用的 MCP SDK 主版本改变了工具注册 API。
+**原因**：`@modelcontextprotocol/server` v2 的 API 变了。
 
-**当前处理**：检查已安装 `@modelcontextprotocol/server`、`agents/mcp/server` 与 Zod 的类型及
-Cloudflare 当前 `mcp-worker` 示例；当前常见 API 使用 `server.registerTool()`，不要仅凭旧文章猜方法名。
+**解决**：用 `server.registerTool()` 替代 `server.tool()`。
 
 ## 5. Peer dependency 冲突
 
@@ -95,14 +83,24 @@ Accept: application/json, text/event-stream
 
 ## 7. Token 鉴权方式与安全默认值
 
-**历史问题**：旧版私人连接界面只能输入 URL，无法额外配置请求头。
+**问题**：ChatGPT 导入插件时只有一个 URL 输入框，无法额外配置请求头。
 
-**当前处理**：新私人连接优先 Bearer；公开插件使用 OAuth 2.1。只有维护旧私人连接时才通过
-显式开关兼容 URL token 或 API-Key Header。未配置认证必须 fail closed，入口 token 使用
-定长摘要比较，并支持短期 previous token 轮换。当前完整实现见 [templates.md](templates.md)
-的“公共安全函数”，不要复制旧版直接字符串比较示例。
+**解决**：支持三种 token 传递方式，URL 参数是关键。**安全默认值：未设置 token 时拒绝所有请求**：
+```typescript
+function checkAuth(request: Request, env: Env): boolean {
+  const token = env.MCP_AUTH_TOKEN;
+  if (!token) return false; // ⚠️ 安全默认：未设置 token 则拒绝所有请求
+  const auth = request.headers.get("Authorization");
+  if (auth === `Bearer ${token}`) return true;
+  const apiKey = request.headers.get("X-API-Key");
+  if (apiKey === token) return true;
+  const url = new URL(request.url);
+  if (url.searchParams.get("token") === token) return true;
+  return false;
+}
+```
 
-> URL token 会进入浏览器历史、代理日志和截图，不能用于公开发布。旧版 `return true` 的 fail-open 行为已禁止。
+> **对抗式审查修复**：旧版文档中此处为 `return true`（允许无 token 访问），已在所有模板中修正为 `return false`。
 
 ## 8. Secret 传播延迟
 
@@ -363,11 +361,11 @@ Error: Worker name "My_MCP" is invalid. Names must be 1-63 characters, lowercase
 **合法示例**：`my-mcp`、`pkulaw-mcp`、`my-mcp-v2`
 **非法示例**：`My_MCP`、`my.mcp`、`-my-mcp`、`my-mcp-`
 
-## 24. 旧 URL Token 兼容方式的编码与泄漏风险
+## 24. 手工 Token 含 URL 特殊字符导致鉴权失败
 
-**问题**：设置了含特殊字符的 `MCP_AUTH_TOKEN`（如 `sk-test&abc`），ChatGPT 调用时 URL 被截断，鉴权失败返回 401。
+**问题**：旧兼容连接把含特殊字符的 Token 放进 query，ChatGPT 调用时 URL 被截断，鉴权失败返回 401。
 
-**原因**：Token 通过 URL 参数传递（`?token=xxx`），以下字符会破坏 URL 解析：
+**原因**：旧版 `?token=xxx` 传递会受下列字符影响：
 - `&` — 截断参数（最常见）
 - `=` — 干扰键值对解析
 - `#` — 截断 URL（fragment 标识符）
@@ -378,9 +376,7 @@ Error: Worker name "My_MCP" is invalid. Names must be 1-63 characters, lowercase
 - `?` — 干扰查询参数开始
 - `@` — 干扰 URL 权限段
 
-**解决**：优先迁移到 Bearer；公开插件迁移到 OAuth 2.1。必须维持旧私人 URL token 时，使用高强度 URL-safe 随机值并正确编码，禁止公开分享完整 URL。
-
-> 即使完成 URL 编码，查询参数仍可能进入日志和历史记录，因此只能作为旧私人连接的临时兼容方案。
+**解决**：新连接不手写 query Token。使用 `scripts/create-user-link.js` 生成 32 个随机字节并编码成固定长度 base64url，放入 `/u/<userId>/<token>/mcp` 路径；Cloudflare 只保存摘要。旧 query 连接只保留为迁移兼容，迁移后撤销。
 
 ## 25. macOS Homebrew 安装的 Node.js 全局包权限问题
 
@@ -439,24 +435,24 @@ File C:\...\verify.ps1 cannot be loaded because running scripts is disabled on t
 Worker exceeded daily limit of 100000 requests
 ```
 
-**历史原因**：当时使用的 Cloudflare 免费计划额度耗尽。套餐和额度会变化；聚合模式每次 tools/list 触发 N 个上游请求，仍可能显著放大用量。
+**原因**：Cloudflare Workers 免费计划每天 10 万次请求限制。聚合模式下，每次 ChatGPT 调用 `tools/list` 会触发 N 个上游请求（N = 上游数量），消耗较快。
 
 **解决**：
-- 方案 1：在 Cloudflare 控制台确认当前套餐、额度和重置时间
-- 方案 2：根据当前官方价格评估升级，不使用本历史记录中的旧价格
+- 方案 1：等待 UTC 午夜重置（北京时间次日 8:00）
+- 方案 2：升级到 Workers Paid 计划（$5/月，1000 万次请求/月）
 - 方案 3：减少不必要的请求：
-  - 聚合模式缓存已验证的目录与映射，不在每次 `tools/call` 前查询全部 `tools/list`
+  - 聚合模式中填写 `TOOL_MAP` 避免每次 `tools/call` 都查询 `tools/list`
   - 在 ChatGPT 中禁用不常用的插件，减少自动调用
 
 ---
 
 ## 有状态上游 MCP 实战新增（#29-#32）
 
-> 来源：把一个含多个端点的**有状态**第三方 MCP 平台用聚合模式接入 ChatGPT 的脱敏实战。此前测试的若干上游是无状态服务，因此旧模板没有暴露 session 问题。
+> 来源：把一个**有状态**上游 MCP 平台（tikhub，16 个平台端点）用聚合模式接入 ChatGPT 的实战。之前接的上游（北大法宝等）都是无状态的，所以这套模板从未暴露过 session 问题。
 
 ## 29. 有状态上游 MCP 必须管 session（最重要）
 
-**问题**：用代理（模式 B）或聚合（模式 C）接某个上游 MCP 时，ChatGPT 连接失败，或 `tools/list` 返回空、工具调用报 `400 Bad Request: Missing session ID`。但换成无状态上游时正常。
+**问题**：用代理（模式 B）或聚合（模式 C）接某个上游 MCP 时，ChatGPT 连接失败，或 `tools/list` 返回空、工具调用报 `400 Bad Request: Missing session ID`。但换别的上游（无状态的，如北大法宝）就完全正常。
 
 **原因**：上游是**有状态的 Streamable HTTP** 服务器。`initialize` 时它在**响应头**里返回 `mcp-session-id`，之后所有请求（`notifications/initialized`、`tools/list`、`tools/call`）都必须带这个 header，否则返回 `400 Missing session ID`。而：
 - 模式 B 代理只透传 `Content-Type`/`Accept`/`Authorization` 三个头，**漏转了 `mcp-session-id`**；
@@ -466,11 +462,44 @@ Worker exceeded daily limit of 100000 requests
 
 **判断方法**：直接 curl 上游 `initialize`，看响应头有没有 `mcp-session-id`；再**不带** session 调 `tools/list`，若返回 `400 Missing session ID` 即是有状态上游。
 
-**解决**：为每个上游维持独立 session——`initialize` 取 `mcp-session-id` → 带 session 发
-无 id 的 `notifications/initialized` → 带 session 发真正调用；session 失效时最多重建一次。
-Worker 内存不是持久存储，冷启动后必须能重新 initialize。模式 B 透传客户端 session；模式 C
-根据实测上游生成完整 session 管理，见 [templates.md](templates.md) 的当前门槛。不要复制旧版
-硬编码协议版本、读取完整 SSE 文本或给 notification 添加 JSON-RPC id 的历史代码。
+**解决**：为每个上游维持一个 session——`initialize` 取 `mcp-session-id` → 带 session 发 `notifications/initialized` → 带 session 发真正调用；session 失效（400）时自动重建。模式 B/C 模板已按此更新（见 templates.md）。核心逻辑：
+
+```typescript
+const sessionCache = new Map<string, string>(); // upstreamUrl -> mcp-session-id（模块级，同 isolate 复用）
+
+async function createSession(upstream, env): Promise<string | null> {
+  const headers = {
+    "Content-Type": "application/json",
+    "Accept": "application/json, text/event-stream",
+    "Authorization": `Bearer ${getToken(upstream, env)}`,
+  };
+  const res = await timedFetch(upstream.url, { method: "POST", headers, body: JSON.stringify({
+    jsonrpc: "2.0", id: 1, method: "initialize",
+    params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "aggregator", version: "2.0.0" } },
+  })});
+  const sid = res.headers.get("mcp-session-id");
+  await res.text().catch(() => {}); // 排空响应体
+  if (sid) {
+    sessionCache.set(upstream.url, sid);
+    await timedFetch(upstream.url, { method: "POST",
+      headers: { ...headers, "mcp-session-id": sid },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }),
+    }).then(r => r.text()).catch(() => {});
+  }
+  return sid;
+}
+
+async function callUpstream(upstream, env, method, params) {
+  let sid = sessionCache.get(upstream.url) || await createSession(upstream, env);
+  let res = await postWithSession(upstream, env, sid, method, params);
+  if (res.status === 400 && /session/i.test(await res.clone().text())) { // session 失效
+    sessionCache.delete(upstream.url);
+    sid = await createSession(upstream, env);
+    res = await postWithSession(upstream, env, sid, method, params);
+  }
+  return parseMcpResponse(await res.text());
+}
+```
 
 > 模式 B（单上游透明代理）更简单的修法：把客户端带来的 `mcp-session-id` 头**原样转发**给上游即可（见 templates.md 模式 B）。
 
@@ -492,7 +521,7 @@ Worker 内存不是持久存储，冷启动后必须能重新 initialize。模�
    data: {"jsonrpc":"2.0","id":1,"result":{...}}
 
    ```
-2. `initialize` 按当前 SDK/规范协商协议版本，不无理由硬编码单一旧版本
+2. `initialize` 返回 `protocolVersion: "2025-06-18"`（或回显客户端请求的版本）
 3. 实现 `ping` 返回 `{}`；`notifications/*` 返回 `202`
 4. 有状态上游按 #29 管 session
 
@@ -504,7 +533,7 @@ Worker 内存不是持久存储，冷启动后必须能重新 initialize。模�
 
 > 另外，有些上游文档里写了 `/sse` 端点，实际可能未开通（返回 404），以实测为准。
 
-## 32. Windows 上 Wrangler 报钥匙串错误
+## 32. Windows 上 wrangler 报钥匙串错误 + 官方 MCP 部署替代
 
 **问题**（Windows）：`npx wrangler whoami` / `deploy` 报：
 ```
@@ -513,4 +542,6 @@ Worker 内存不是持久存储，冷启动后必须能重新 initialize。模�
 
 **原因**：wrangler 4.x 在 Windows 用系统钥匙串存登录凭据，缺 `@napi-rs/keyring` 就读不到已登录态。
 
-**解决**：升级 Wrangler、重新登录并按 Cloudflare 当前官方文档检查 Windows 凭证存储。自动化环境可使用最小权限的 `CLOUDFLARE_API_TOKEN` 环境变量，令牌不得写入源码、命令历史或公开日志。本公开技能不要求安装其他插件。
+**解决**：
+- 方案 1：设环境变量 `CLOUDFLARE_API_TOKEN`，wrangler 优先用它、绕过钥匙串。
+- 方案 2：不用本机 wrangler，改用**官方 Cloudflare MCP**（`https://mcp.cloudflare.com/mcp`，Code Mode）的 `execute` 工具直接调 API 部署：`PUT /accounts/{account_id}/workers/scripts/{script_name}`，multipart/form-data，metadata 里用 `main_module` 指定入口文件、`bindings` 用 `secret_text` 注入 secret。适合已授权该 MCP、不想折腾本机 wrangler 的场景（同名部署即覆盖更新，无需先删）。

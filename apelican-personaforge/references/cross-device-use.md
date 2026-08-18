@@ -1,6 +1,6 @@
 # 跨设备安装与使用
 
-本技能包保持纯 Markdown，不要求额外 Codex 插件、私人 MCP、固定用户名或固定磁盘路径。
+本技能包以 Markdown 说明为主，并保留两个可直接运行的 JavaScript 小工具：生成一人一条的专属能力链接，以及审计 MCP。小红书上传页已经明确展示支持 `.js`，因此不再为了旧兼容假设把可执行脚本强行压进 Markdown。技能不要求额外 Codex 插件、私人 MCP、固定用户名或固定磁盘路径。
 
 ## 安装技能包
 
@@ -10,10 +10,9 @@
    - WorkBuddy：`~/.workbuddy/skills/apelican-personaforge/`
    - 其他支持 `SKILL.md` 的客户端：使用其当前文档指定的用户级技能目录。
 3. 重启或刷新客户端的技能列表。
-4. 用“把一个 REST API 部署成 Cloudflare MCP，并逐步验证”测试触发。
+4. 用“把一个 REST API 做成我的 ChatGPT 个人插件，请一步一步带我完成”测试触发。
 
-**验证**：客户端能识别名称 `apelican-personaforge`，并先询问/判断上游、公开或私人目标、
-Worker 或 Tunnel；如果只把 `SKILL.md` 单文件复制而丢失 references，安装不完整。
+**验证**：客户端能识别名称 `apelican-personaforge`，先用普通话确认你想带进 ChatGPT 的能力，再判断私人专属链接、OAuth 或 Tunnel；如果只复制 `SKILL.md` 而丢失 references 和 scripts，安装不完整。
 
 ## Windows、macOS 与 Linux
 
@@ -27,13 +26,13 @@ Worker 或 Tunnel；如果只把 `SKILL.md` 单文件复制而丢失 references�
 
 ## 多设备调用 Cloudflare Worker
 
-Worker 部署后，第二台设备通常只需要稳定 HTTPS `/mcp` URL 和该客户端支持的认证配置。
+Worker 部署后，第二台设备通常只需要该用户自己的完整 HTTPS 专属 URL，或 OAuth/Tunnel 对应的连接方式。
 不要复制 Cloudflare API Token、上游 API Key、`.wrangler` 目录或项目中的 Secret。
 
 第二设备回归：
 
 1. `/health` 返回最小状态，不泄露工具或上游；
-2. 无认证与错误认证为 401/403；
+2. 错用户名、错误 Token 和跨用户错配为 401/403/404；
 3. 正确认证完成 init/initialized/ping/list；
 4. 工具数量与第一设备一致；
 5. 调用一个只读工具，关键字段一致；
@@ -49,8 +48,8 @@ OpenAI Secure MCP Tunnel 连接的是一台持续在线的主机。手机或其�
 
 发布者提供 ZIP 的 SHA-256。使用者解压后确认：
 
-- 根目录只有技能需要的 Markdown 文件；
+- 根目录只有技能需要的 Markdown 和已说明的 `.js` 文件；
 - `SKILL.md` 在根目录；
 - `references` 与 `examples` 层级未扁平化；
-- 没有 `.env`、`.dev.vars`、日志、缓存、`node_modules` 或真实项目配置；
+- 没有 `.env`、`.dev.vars`、日志、缓存、`node_modules`、真实链接或私人项目配置；
 - ZIP 哈希与发布说明一致。

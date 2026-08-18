@@ -1,55 +1,60 @@
-# 工具元数据与结果设计
+# 元数据、结果与工具面设计
 
-## 让 GPT 选对工具
+## 工具命名
 
-使用 `verb_object` 命名：`search_documents`、`fetch_document`、`create_order`。避免 `request`、`do_api`、`tool_17`。
+- 使用 `verb_object`：`search_documents`、`fetch_document`、`create_order`。
+- 不用 `do_api`、`request`、`tool_17` 等含义不清的名称。
+- 名称一旦发布即保持稳定；行为变化用服务器版本和变更记录表达。
 
-description 按以下顺序写：
+## `title` 与 `description`
 
-1. 这个工具完成什么目标；
-2. 什么时候应该使用；
-3. 什么时候不要使用；
+`title` 供人阅读；`description` 供模型做选择。描述按以下顺序写：
+
+1. 一句话说明工具完成的目标；
+2. 何时使用；
+3. 明确不要使用的邻近场景；
 4. 重要前置条件或副作用；
-5. 返回什么。
+5. 返回内容。
 
 示例：
 
-> Search documents in connected knowledge bases. Use before fetch when the document ID is unknown. Do not use for web search. Returns ranked IDs, titles, snippets, and canonical URLs when available.
+> Search documents in all connected knowledge bases. Use before fetch when the document ID is unknown. Do not use for web search. Returns ranked IDs, titles, snippets, and canonical URLs when the source provides them.
 
-## 参数
+## 参数 schema
 
-- 对象根，明确 required，尽量关闭未知属性；
+- 对象根、明确 `required`、尽量 `additionalProperties: false`；
 - 时间使用 ISO 8601 并写明时区；
-- 数量设置 min/max；
-- ID 与人类标题分开；
+- 数量设置合理 min/max；
+- ID 和人类标题分开；
 - 枚举优于自由文本开关；
-- 不让模型填写可由服务端推导的账户 ID、密钥和内部路由。
+- 不让模型传可由服务端推导的账户 ID、密钥或内部路由。
 
-## 结果
+## 输出 schema
 
-- 列表返回稳定 ID、分页 cursor 和终止条件；
-- 大文档返回 truncated 与 next_offset，并提供分块工具；
-- 真实 URL 才放进 url 字段；
-- 媒体不要塞入巨大 base64 文本，使用资源/媒体块或授权 URL；
-- 同时提供 structuredContent 与简洁文本兼容层。
+- 对象根，稳定字段优先；
+- 分页返回 `next_cursor` 或 `offset`，并写明终止条件；
+- 大文档返回 `truncated` 和下一分块位置；
+- 结果列表返回可排序的稳定 ID；
+- 真实 URL 才能放入 `url`；没有则用空字符串并解释限制。
 
 ## 注解判断
 
 | 行为 | readOnly | destructive | openWorld | idempotent |
 |---|---:|---:|---:|---:|
 | 查询私人数据库 | true | false | false | true |
-| 搜索互联网 | true | false | true | true |
-| 创建记录 | false | false | 视情况 | 通常 false |
-| 覆盖或删除 | false | true | 视情况 | 视实现 |
+| 搜索公开互联网 | true | false | true | true |
+| 创建记录 | false | false | false | false/按幂等键 |
+| 覆盖或删除 | false | true | false | 视实现 |
 | 发帖、发信、支付 | false | 视后果 | true | 通常 false |
 
-## 大型 API
+## 大目录压缩
 
-数百个相似工具会降低选择准确率。优先合并为任务型工具；或使用：
+超过几十个高度相似工具时，优先：
 
-- `search_tools(query, platform?, limit?)` 返回精确名称、描述和 input schema；
-- `execute_read_tool(name, arguments)` 只执行经过 allowlist 判定的只读工具；
-- 写工具独立注册，不能借通用执行器绕过确认。
+- 合并成少量任务型工具；或
+- 暴露 `search_tools(query, platform?, limit?)`，返回精确工具名、用途和参数 schema；
+- 暴露 `execute_read_tool(name, arguments)`，只允许经分类器和 allowlist 判定的只读工具；
+- 写入工具独立暴露，不能通过通用执行器绕过确认和注解。
 
-目录设置 TTL，并限制枚举并发；每次调用前重新扫描全部上游通常既慢又浪费额度。
+目录缓存必须有 TTL；并发有上限；不要每次 `tools/call` 都重新枚举全部上游。
 

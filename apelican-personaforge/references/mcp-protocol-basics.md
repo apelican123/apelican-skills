@@ -3,60 +3,46 @@
 ## Streamable HTTP
 
 - 端点通常为 `/mcp`。
-- POST 使用 `Content-Type: application/json`。
-- Accept 声明 `application/json, text/event-stream`。
-- 响应可能是 JSON 或 SSE；透明代理不要无故缓冲流。
-- notification 没有 JSON-RPC id，成功处理后通常返回 202/204。
+- POST 请求使用 `Content-Type: application/json`。
+- 客户端应声明 `Accept: application/json, text/event-stream`。
+- 响应可能是 JSON 或 SSE；透明代理不得无故缓冲/重写流。
+- 通知没有 JSON-RPC `id`，成功处理后通常返回 202/204，不生成伪响应。
 
 ## 生命周期
 
-1. initialize：协商版本、能力、serverInfo、instructions。
-2. notifications/initialized：客户端确认。
-3. tools/list：返回工具定义。
-4. tools/call：按 schema 调用。
-5. ping：返回空 result。
+1. `initialize`：协商版本、能力、`serverInfo` 和 `instructions`。
+2. `notifications/initialized`：客户端确认初始化。
+3. `tools/list`：返回完整工具定义。
+4. `tools/call`：按 schema 调用。
+5. `ping`：返回空 result。
 
-不要无理由硬编码只接受单一协议版本。用当前 SDK 协商，并测试主流兼容版本。
-
-最小 initialize 请求：
-
-```json
-{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"verify","version":"1"}}}
-```
-
-服务端返回的 `protocolVersion`、`serverInfo`、`capabilities` 和可选 `instructions` 才是协商结果。
-随后发送无 id 的 `notifications/initialized`，再进行 list/call。不要跳过通知后仅凭 initialize 判定兼容。
-
-工具枚举与调用：
-
-```json
-{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
-```
-
-```json
-{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search_records","arguments":{"query":"example","limit":3}}}
-```
+不要只为“看起来新”硬编码单个协议版本；按 SDK/规范协商并与主流兼容版本回归。
 
 ## 有状态上游
 
-initialize 响应头出现 `mcp-session-id` 时：保存、后续回带、各上游隔离；400 session 错误最多重建一次。Worker 内存 Map 不是强持久存储，冷启动时要能重新初始化。
+若 initialize 响应头含 `mcp-session-id`：
 
-## 错误
+- 保存到该上游会话；
+- initialized/list/call 都回带；
+- 400 session 错误时清除并重建一次；
+- 多上游分别维护，不串用；
+- Worker 实例内 Map 不是强持久保证，需要接受冷启动重建或使用合适持久层。
 
-- 协议/方法/参数格式错误：JSON-RPC error。
-- 工具业务失败：result.isError = true。
-- HTTP 200 里也可能装着失败，客户端必须解析正文。
-
-notification 没有 id，不得返回伪造的 JSON-RPC id；方法不存在使用规范 error，而不是把错误
-塞进成功 `result`。工具自身失败则返回 `isError: true`，让客户端能区分传输/协议与业务失败。
-
-## 结构化结果
+## 工具结果
 
 ```json
 {
-  "content": [{"type":"text","text":"{\"items\":[]}"}],
-  "structuredContent": {"items":[]}
+  "content": [{ "type": "text", "text": "{\"items\":[]}" }],
+  "structuredContent": { "items": [] }
 }
 ```
 
-声明 outputSchema 时，structuredContent 必须通过验证。
+若声明 `outputSchema`，对象根的 `structuredContent` 必须验证通过。工具业务失败设置 `isError: true`；协议格式/方法错误使用 JSON-RPC error。
+
+## 传输边界
+
+- 请求体默认限制约 1 MiB，并按业务调整；
+- 响应解析设置硬上限；未知大响应流式转发；
+- 超时使用 `AbortController`；
+- 不盲目重试非幂等操作；
+- 代理保留必要的 `mcp-session-id`、内容类型和协议相关头，剥离 hop-by-hop 与客户端认证头。
