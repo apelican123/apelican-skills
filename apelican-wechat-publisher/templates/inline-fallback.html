@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>inline fallback 1080x720</title>
+  <style>
+    html, body { margin: 0; background: #111; }
+    .poster {
+      width: 1080px;
+      height: 720px;
+      background: #f4f7fa;
+      color: #121417;
+      position: relative;
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    .rail {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 12px;
+      height: 100%;
+      background: #1f4e8c;
+    }
+    .label {
+      position: absolute;
+      left: 72px;
+      top: 72px;
+      letter-spacing: 0.22em;
+      font-size: 14px;
+      color: #1f4e8c;
+    }
+    .line {
+      position: absolute;
+      left: 72px;
+      right: 72px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 42px;
+      line-height: 1.45;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .foot {
+      position: absolute;
+      left: 72px;
+      bottom: 56px;
+      font-size: 14px;
+      color: #5c6570;
+      letter-spacing: 0.12em;
+    }
+  </style>
+</head>
+<body>
+  <!-- 正文配图退路：一句判断 + 大留白。截 .poster。 -->
+  <section class="poster" data-theme="tech">
+    <div class="rail"></div>
+    <div class="label">NOTE</div>
+    <div class="line">一张图只说一件事。</div>
+    <div class="foot">配图 · 不是现场</div>
+  </section>
+</body>
+</html>

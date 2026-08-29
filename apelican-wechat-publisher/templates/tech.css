@@ -1,0 +1,148 @@
+/*
+  tech.css — 科技青简
+  港式资讯版的冷静无衬线：左竖线小标题、克制蓝、代码可读。
+*/
+:root {
+  --text-color: #22262b;
+  --primary-color: #1f4e8c;
+  --bg-color: #ffffff;
+  --muted-color: #5c6570;
+  --line-color: #d9e2ec;
+  --block-bg-color: #f4f7fa;
+  --header-color: #121417;
+}
+
+#wenyan {
+  color: var(--text-color);
+  font-size: 16px;
+  line-height: 1.8;
+  letter-spacing: 0.02em;
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+#wenyan p {
+  margin: 0.95em 0;
+}
+
+#wenyan h1,
+#wenyan h2,
+#wenyan h3,
+#wenyan h4 {
+  color: var(--header-color);
+  font-family: inherit;
+  letter-spacing: 0.03em;
+}
+
+#wenyan h1 {
+  font-size: 1.4em;
+  font-weight: 700;
+  text-align: left;
+  margin: 0.3em 0 1em;
+}
+
+#wenyan h2 {
+  font-size: 1.16em;
+  font-weight: 650;
+  margin: 1.8em 0 0.7em;
+  padding: 0 0 0 0.7em;
+  border-left: 3px solid var(--primary-color);
+  background: transparent;
+  display: block;
+  border-radius: 0;
+}
+
+#wenyan h2,
+#wenyan h2 code,
+#wenyan h2 a,
+#wenyan h2 strong {
+  color: var(--header-color);
+  background: transparent;
+}
+
+#wenyan h3 {
+  font-size: 1.02em;
+  margin: 1.4em 0 0.5em;
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+#wenyan strong {
+  color: var(--primary-color);
+}
+
+#wenyan a {
+  color: var(--primary-color);
+  word-wrap: break-word;
+}
+
+#wenyan blockquote {
+  margin: 1.2em 0;
+  padding: 0.65em 0.9em;
+  border-left: 3px solid var(--primary-color);
+  background: var(--block-bg-color);
+  color: var(--muted-color);
+  font-size: 0.95em;
+}
+
+#wenyan hr {
+  border: 0;
+  border-top: 1px solid var(--line-color);
+  margin: 1.8em 0;
+}
+
+#wenyan img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.2em auto;
+}
+
+#wenyan ul,
+#wenyan ol {
+  margin: 0.7em 0 0.7em 1.2em;
+}
+
+#wenyan p code {
+  background: var(--block-bg-color);
+  color: var(--primary-color);
+  padding: 0.12em 0.35em;
+  border-radius: 3px;
+  font-size: 0.9em;
+  word-break: break-all;
+}
+
+#wenyan pre {
+  background: var(--block-bg-color);
+  border-radius: 4px;
+  padding: 0.7em 0.9em;
+  margin: 1em 0;
+  box-shadow: none;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+#wenyan pre code {
+  display: block;
+  overflow-x: auto;
+}
+
+#wenyan table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.2em 0;
+  font-size: 0.88em;
+  word-break: break-all;
+}
+
+#wenyan table th,
+#wenyan table td {
+  border: 1px solid var(--line-color);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+#wenyan table th {
+  background: var(--block-bg-color);
+  color: var(--primary-color);
+}

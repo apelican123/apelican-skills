@@ -1,0 +1,9 @@
+【技能名称】apelican-wechat-publisher
+【类型】自制公开技能（文档、脚本与三套排版模板）
+【许可协议】Apache License 2.0（见同目录 LICENSE）
+【排版依赖】wenyan-cli（@wenyan-md/cli）
+【依赖仓库】https://github.com/caol64/wenyan-cli
+【依赖作者】caol64
+【依赖许可】Apache License 2.0
+【依赖说明】本包不捆绑 wenyan-cli 源码。读者需自行通过 npm 安装官方包。Apache-2.0 允许使用、修改与再分发（含商业用途），须保留版权声明与许可文本。
+【灵感来源】通用 Agent 技能 wechat-publisher（将 Markdown 保存到微信公众号草稿箱）。公开版已重写为小白可独立完成的配置指引，并补了跨平台命令与三套模板，不是原文件原样转载。

@@ -4,7 +4,7 @@
 
 ### 一些我根据自己的需要，慢慢做出来的 AI Skills
 
-[目前收录](#目前收录) · [怎么安装](#怎么安装) · [反馈与建议](https://github.com/apelican123/apelican-skills/issues)
+[目前收录](#目前收录) · [怎么安装](#怎么安装) · [技能介绍](#技能介绍) · [反馈与建议](#反馈与建议)
 
 </div>
 
@@ -16,7 +16,7 @@
 
 它们大多从我自己遇到的问题开始，所以有些技能可能还没有那么完善。我会继续使用，也会随着自己的需要，一点点调整和优化。
 
-如果你对其中某个技能感兴趣，希望你能先看看它的介绍和使用说明，确认它是不是适合你的使用场景。如果这些技能刚好也能帮到你，我会很高兴。
+如果你对其中某个技能感兴趣，希望你能先看看它的介绍和使用说明，确认它是不是适合你的使用场景。使用前请读该技能自己的前提条件和权限说明。如果这些技能刚好也能帮到你，我会很高兴。
 
 ## 目前收录
 
@@ -24,6 +24,7 @@
 |---|---:|---|---|
 | **apelican-ark** | 2.2.0 | 给 Codex 和 WorkBuddy 做本地备份；换电脑或重装前先预览，确认后再备份和恢复 | [查看介绍](#apelican-ark) |
 | **apelican-personaforge** | 4.0.1 | 注册 Cloudflare 后，AI 自动在 Workers 部署并给出可接到 ChatGPT 插件的链接 | [查看介绍](#apelican-personaforge) |
+| **apelican-wechat-publisher** | 1.3.0 | 把写好的 Markdown 排成公众号样式，保存到草稿箱；不会自动群发 | [查看介绍](#apelican-wechat-publisher) |
 
 ## 怎么安装
 
@@ -31,7 +32,7 @@
 
 ```text
 请帮我安装这个 Skill：
-https://github.com/apelican123/apelican-skills/tree/main/apelican-ark
+https://github.com/apelican123/apelican-skills/tree/main/apelican-wechat-publisher
 ```
 
 把最后的技能目录换成你想安装的那个即可。Agent 会把技能放到它实际使用的 skills 目录。如果你的客户端不支持自动安装，也可以手动复制。
@@ -43,7 +44,7 @@ https://github.com/apelican123/apelican-skills/tree/main/apelican-ark
 
 ```powershell
 git clone https://github.com/apelican123/apelican-skills.git
-$skill = "apelican-ark"
+$skill = "apelican-wechat-publisher"
 Copy-Item ".\apelican-skills\$skill" "$env:USERPROFILE\.codex\skills\$skill" -Recurse
 ```
 
@@ -51,7 +52,7 @@ Copy-Item ".\apelican-skills\$skill" "$env:USERPROFILE\.codex\skills\$skill" -Re
 
 ```bash
 git clone https://github.com/apelican123/apelican-skills.git
-skill="apelican-ark"
+skill="apelican-wechat-publisher"
 cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 ```
 
@@ -120,6 +121,33 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 公开包是纯文档加可复制的 Worker 模板。部署由 AI 用 Python 调 Cloudflare API 完成，不要求你安装 wrangler。
 
 [查看完整 SKILL.md](./apelican-personaforge/SKILL.md) · [查看使用说明](./apelican-personaforge/skill-card.md)
+
+### apelican-wechat-publisher
+
+> 把已经写好的文章排成适合手机阅读的公众号正文，并保存到草稿箱。粉丝此时还看不见。
+
+我做这个技能，是因为写完 Markdown 之后，还要进编辑器调行距、一张张传图、再去好几个长得很像的后台找 AppID。真正劝退的往往不是写作，是「贴」。
+
+技能会按页面带你拿到公众号自己的 AppID 和 AppSecret，选人文、科技或社会热点三种版式，生成封面和配图，然后把稿子存进草稿箱。wenyan 打印的「发布成功」只表示草稿创建成功，不是已经群发。
+
+最短可以这样开始：
+
+1. 在微信公众平台注册公众号，再用管理员微信登录微信开发者平台。
+2. 取出公众号 AppID，启用 AppSecret，把电脑的公网 IP 加进白名单。
+3. 安装 Node.js 和 `@wenyan-md/cli`，在技能目录写入自己的 `.env`。
+4. 把文章交给 AI，或直接运行 `wenyan publish`。然后到 https://mp.weixin.qq.com/ 草稿箱自己预览、再点发表。
+
+有几个边界需要提前知道：
+
+- 它不群发、不定时发表、不改账号权限，也不会替你点「发表」。
+- 密钥必须来自微信开发者平台里的公众号，不是开放平台的移动应用或网站应用。
+- 标题和作者会尽量从正文里识别并填进稿件头部；认不准会问你，不会编一个名字。
+- 封面按规范生成；配图不是证据，不能拿 AI 图冒充现场或截图。
+- 需要你自己的公众号，并且本机装得了 Node.js。
+
+排版层使用开源工具 [wenyan-cli](https://github.com/caol64/wenyan-cli)（Apache-2.0）。本仓库不捆绑它的源码，需要你自行用 npm 安装。
+
+[查看完整 SKILL.md](./apelican-wechat-publisher/SKILL.md) · [查看简明介绍](./apelican-wechat-publisher/skill-card.md)
 
 ## 反馈与建议
 

@@ -1,0 +1,25 @@
+版权声明 · Copyright Notice
+────────────────────────────
+【来源】本技能由「一只鹈鹕」（GitHub: apelican123）依据自身需要独立开发。
+【GitHub 仓库】https://github.com/apelican123/apelican-skills
+【许可协议】Apache License 2.0
+            https://www.apache.org/licenses/LICENSE-2.0
+
+【授权说明】
+依据 Apache License 2.0，你可以自由使用、修改、复制与再分发本技能，
+包括用于商业用途，但须遵守以下要求：
+1. 保留本版权声明与原始来源标注；
+2. 若修改了内容，须注明所做的修改；
+3. 不得移除本声明中指向原始作者的归属信息。
+
+【排版依赖】wenyan-cli（@wenyan-md/cli）
+【依赖仓库】https://github.com/caol64/wenyan-cli
+【依赖作者】caol64
+【依赖许可】Apache License 2.0
+本包不捆绑 wenyan-cli 源码。读者需自行通过 npm 安装官方包。
+
+【灵感来源】通用 Agent 技能 wechat-publisher（将 Markdown 保存到微信公众号草稿箱）。
+公开版已重写为可独立完成的配置指引，并补了跨平台命令与三套模板，不是原文件原样转载。
+
+────────────────────────────
+· 本技能基于作者自身的使用经验整理，欢迎反馈与建议。

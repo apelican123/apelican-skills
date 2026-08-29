@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>cover fallback 900x383</title>
+  <style>
+    html, body { margin: 0; background: #111; }
+    .poster {
+      width: 900px;
+      height: 383px;
+      background: #f7f4ee;
+      color: #1f1c19;
+      position: relative;
+      overflow: hidden;
+      font-family: "Songti SC", "STSong", "SimSun", "PingFang SC", serif;
+    }
+    .bar { height: 8px; background: #9c3d2e; }
+    .kicker {
+      position: absolute;
+      left: 50%;
+      top: 78px;
+      transform: translateX(-50%);
+      letter-spacing: 0.28em;
+      font-size: 13px;
+      color: #9c3d2e;
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    .word {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -54%);
+      font-size: 92px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+    }
+    .rule {
+      position: absolute;
+      left: 50%;
+      top: 248px;
+      width: 96px;
+      margin-left: -48px;
+      border-top: 1px solid #e6dfd6;
+    }
+    .sub {
+      position: absolute;
+      left: 50%;
+      top: 270px;
+      transform: translateX(-50%);
+      font-size: 16px;
+      letter-spacing: 0.18em;
+      color: #9c3d2e;
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <!-- 只改 kicker / word / sub 和三色。截 .poster 为 PNG。 -->
+  <section class="poster" data-theme="humanities">
+    <div class="bar"></div>
+    <div class="kicker">HUMANITIES</div>
+    <div class="word">纸墨</div>
+    <div class="rule"></div>
+    <div class="sub">同一段字 · 三种读法</div>
+  </section>
+</body>
+</html>
