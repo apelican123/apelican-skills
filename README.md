@@ -23,7 +23,7 @@
 | Skill | 当前版本 | 适合解决什么 | 入口 |
 |---|---:|---|---|
 | **apelican-ark** | 2.2.0 | 给 Codex 和 WorkBuddy 做本地备份；换电脑或重装前先预览，确认后再备份和恢复 | [查看介绍](#apelican-ark) |
-| **apelican-personaforge** | 2.0.0 | 把已有的 API 或 MCP 接进 ChatGPT；不用先懂术语，技能会一步一步带你完成 | [查看介绍](#apelican-personaforge) |
+| **apelican-personaforge** | 4.0.0 | 把已有的 API 或 MCP 铸成 ChatGPT 插件；登录 Cloudflare 后，AI 自动部署并给出可粘贴的链接 | [查看介绍](#apelican-personaforge) |
 
 ## 怎么安装
 
@@ -88,32 +88,35 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 
 ### apelican-personaforge
 
-> 把你已经有的 API、MCP 或技能接口接进 ChatGPT，变成平时聊天时就能直接使用的个人插件。
+> 把你已经有的 API 或 MCP 铸成 ChatGPT 插件：登录 Cloudflare 之后，AI 自动部署，最后给你一条能直接粘进 ChatGPT 的链接。
 
-我最开始做这个技能，是因为有些能力已经能在 Codex、WorkBuddy 或开发环境里调用，但回到普通 ChatGPT 对话时又用不上。现在只要它背后确实有 API 或 MCP 接口，这个技能就可以带你把它接进来。
+我最开始做这个技能，是因为有些能力已经能在开发环境里调用，但回到普通 ChatGPT 对话时又用不上。4.0 把这件事收成最短路径：你准备好 Cloudflare 账号，说出要接什么服务，剩下的设计、写 Worker、部署和验证由技能自动做完。
 
-2.0 主要把使用过程重新做了一遍。你不需要先弄懂“隧道、MCP、OAuth”这些词，也不用一开始自己选择技术方案。技能会先问你想在 ChatGPT 里完成什么，再一次推进一个可以检查的步骤：刚做了什么、应该看到什么、下一步是什么，出现不同结果时又该怎么处理。
+你只需要做两件事：
 
-私人使用时，默认会为每个人生成一条不同的专属能力链接。你在 ChatGPT 里选择“无身份验证”，粘贴完整链接就可以继续；真正的验证在 Cloudflare 完成。用户名只用来生成可识别的标签，访问密钥来自独立的高强度随机数，不会用用户名直接当密码。
+1. 注册或登录 Cloudflare，创建一个只开了 `Workers Scripts: Edit` 的 API Token，并复制 Account ID。
+2. 把上游接口交给技能：MCP 地址加密钥，或 REST API 地址加密钥。
+
+之后技能会生成零依赖的 Worker、用 Cloudflare API 部署、写入密钥、拼出链接，并先验证链接能用，再交给你。你在 ChatGPT 里 Add MCP server，粘贴完整链接，认证选 No authentication 就可以开始用。
+
+私人使用默认不走 OAuth。OAuth 更麻烦，ChatGPT 端也更容易验证失败。默认是「链接自带随机令牌」：ChatGPT 端选无身份验证，服务端仍然校验路径里的令牌，不是把私人数据裸放到公网。只有用户很多、数据要按人隔离，或必须独立撤销和审计时，才值得改用 OAuth。
 
 它适合这些情况：
 
 - 把已有的 REST API 做成 ChatGPT 可以调用的工具。
-- 把一个或多个 MCP 服务接进日常 ChatGPT 对话。
-- 把 Skill 背后已经存在的可调用接口变成个人插件。
-- 给自己或少量可信用户创建彼此独立的能力链接。
-- 检查工具说明、参数、读写权限和返回结果是否容易被 ChatGPT 正确使用。
-- 需要更多用户或准备公开上架时，继续完成 OAuth 2.1 和公开审核准备。
+- 把一个或多个 MCP 服务合并成一个入口，接到日常 ChatGPT 对话。
+- 不想自己装 wrangler 或 Node，只想拿到一条能用的链接。
 - 本机或内网能力需要接入时，使用 OpenAI Secure MCP Tunnel。
 
 有几个边界需要提前知道：
 
-- 完整专属链接本身就是访问密钥，不能截图、公开或转发；泄露后要立即撤销和轮换。
-- 一人一链接只保护入口。如果底层数据本来按用户区分，还需要每个人自己的上游身份或权限，不能让所有人共用一个能读取全部数据的管理员密钥。
-- 只有提示词或 Markdown 流程、没有可调用接口的 Skill，不能直接变成远程插件；要先把对应能力实现成 API 或 MCP。
-- 私人链接在 Developer mode 里能用，不代表已经通过 OpenAI 的公开审核。
+- 完整链接本身就是访问密钥，不能截图、公开或转发；泄露后要立即作废重生成。
+- 账号注册、登录和创建 Token 必须由你本人完成，技能不会也不能替你输入密码。
+- 只有提示词或 Markdown 流程、没有可调用接口的 Skill，不能直接变成远程插件。
+- 写操作、付款、对外发送会单独设计，不会藏进通用执行器。
+- 私人链接能连上，不代表已经通过 OpenAI 的公开审核。
 
-公开包里保留了两个 JavaScript 小工具：一个生成用户专属链接，一个检查 MCP 握手、工具信息、错误链接和跨用户隔离。现在小红书技能上传已经支持 JavaScript 等多种文件，所以没有再把这些可执行工具强行改成纯 Markdown。
+公开包是纯文档加可复制的 Worker 模板，不再附带需要本机 Node 才能跑的 JavaScript 小工具。部署走 Cloudflare REST API，验证命令同时给了 bash 和 PowerShell。
 
 [查看完整 SKILL.md](./apelican-personaforge/SKILL.md) · [查看使用说明](./apelican-personaforge/skill-card.md)
 

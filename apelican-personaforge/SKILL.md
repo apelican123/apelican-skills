@@ -1,158 +1,125 @@
 ---
 name: apelican-personaforge
-description: 把已有的 REST API、单个或多个 MCP 服务，以及技能背后的可调用接口做成 ChatGPT 个人插件；默认用 Cloudflare 生成一人一条的专属能力链接，让普通用户在 ChatGPT 选择“无身份验证”并粘贴链接即可接入，同时覆盖 OAuth 2.1、OpenAI Secure MCP Tunnel、工具设计、验证、部署和回滚。用户提到插件铸造、GPT 个人插件、MCP 网关、Cloudflare MCP、插件审核或 Secure MCP Tunnel 时使用。
+description: 把用户已有的 REST API 或 MCP 铸造成 ChatGPT 可直接使用的插件：AI 获取用户的 Cloudflare API Token 后，自动设计工具面、生成 Worker、部署到 Cloudflare、输出可粘贴进 ChatGPT 的链接。用户提到铸造、GPT 插件、MCP、Cloudflare、自动生成链接、部署时使用。默认铸造模式。只有提示词没有可调用接口时先说明缺口。
 ---
 
-# Plugin Forge 2.0 / 插件铸造器
+# Plugin Forge 4.0 / 全自动铸造机
 
-把已经能通过程序调用的能力带进 ChatGPT 日常对话。用户不需要先懂“隧道、MCP、OAuth、GPT 链接”这些术语；先弄清他手里有什么、最后想在 ChatGPT 里做什么，再一步一步带到可用。
+用户只需要做两件事：**准备一个 Cloudflare 账号，说出要接什么服务**。剩下的——设计工具、写 Worker、部署、生成链接、验证——全部由你自动完成。最终交付一条形如 `https://<你的Worker>.workers.dev/u/<随机令牌>/mcp` 的链接，用户把它粘进 ChatGPT 的 Add MCP server 就能开始用。
 
-只有提示词或 Markdown 流程、没有 API 或 MCP 接口的 Skill，不能直接变成插件。此时先用普通话说明“还缺一个可调用接口”，再帮助确定是否需要新建 API/MCP。
+本技能的规范基线日期是 **2026-08-29**。实现前核对 OpenAI、MCP 和 Cloudflare 当前官方文档；官方契约优先于本技能的旧审计规则、旧截图和历史经验。
 
-本技能的规范基线日期是 **2026-08-18**。开始实现前核对 OpenAI、MCP 与 Cloudflare 官方文档；ChatGPT 页面名称、审核规则和 SDK 可能变化。
+## 默认铸造模式
 
-## 2.0 交互原则
+本技能默认就是铸造模式：用户报出服务后，直接按下面的流程走到「输出链接」为止，不先出方案等确认。设计决策（工具数量、认证方式、读写边界）由你按本技能规则自动做出，只在真正需要用户拍板时（公开发布、写操作、OAuth、删除类工具）停下来问。
 
-1. **先说结果，不先上课**：用“把你的某项能力放进 ChatGPT”解释目标；只有当前步骤需要时才解释术语。
-2. **一次只推进一个可检查动作**：能从本机文件、项目配置或官方文档得到的信息直接读取，不反复问用户。
-3. **每一步都有回应**：按 [新手引导与进度反馈](references/onboarding-and-progress.md) 回报“已完成、你会看到、下一步、异常分支”。
-4. **默认走最短私人路径**：单人自用优先“专属能力链接”；ChatGPT 端选择“无身份验证”，只粘贴完整链接。
-5. **链接不是公开地址**：完整链接同时就是访问密钥。任何拿到它的人都可能使用对应能力；不得截图、公开、转发或写入日志。
-6. **安全要求不能用简化体验换掉**：上游密钥只放 Cloudflare Secrets；缺少认证配置时 fail closed；部署、写操作和公开发布仍遵守确认边界。
+只有用户明确只要方案、不要部署时，才退回到「设计模式」只输出交付说明。
 
-## 默认安全模型：一人一条专属能力链接
+## 用户唯一的两个手动步骤
 
-私人自用默认生成：
+1. **注册/登录 Cloudflare**，生成一个 API Token（权限仅勾 Workers Scripts: Edit），并复制 Account ID。账号注册和登录必须由用户本人完成——你无法也不会替用户注册账号或输入密码。
+2. **把上游接口交给你**：MCP 服务地址 + 密钥，或 REST API 地址 + 密钥，或直接说清你有哪些接口。
 
-```text
-https://<你的-worker-域名>/u/<用户名标识>/<高强度随机Token>/mcp
-```
+其余全部自动：你负责生成 Worker 代码、调用 Cloudflare Workers API 上传、写入密钥、启用 workers.dev、拼出链接、验证链接可用、给出 ChatGPT 配置步骤。
 
-- “用户名标识”只负责区分用户，必须经过规范化并附加短哈希；**不能把用户名本身当密码，也不能从用户名推算 Token**。
-- 每位用户生成独立的至少 256 bit 随机 Token；Cloudflare 只保存 Token 的 SHA-256 摘要，逐次做常量时间比较。
-- 最稳妥的默认是每位使用者在自己的 Cloudflare 账号中部署自己的 Worker。一个 Worker 管理少量可信用户时，也必须一人一摘要 Secret、一人一 URL，并验证 A 用户的 Token 放到 B 用户路径后会被拒绝。
-- 链接隔离只保护“谁能调用这个入口”。如果上游数据本身分用户，还必须使用各自的上游凭据/scope；不能让所有链接共用一个能读取全部用户数据的上游管理员密钥。
-- 链接泄露时只撤销和轮换该用户的摘要 Secret，不影响其他用户。
+## 工作流
 
-这在 ChatGPT 表单里属于“无身份验证”，因为 ChatGPT 不再单独保存认证字段；**验证仍由 Cloudflare 完成，并不是 Worker 匿名开放**。固定 `/mcp` 不得直接对私人数据匿名开放。
+### 1. 确认目标与边界
 
-专属链接适合单人自用或少量、人工管理的可信用户。大量用户、独立账号/scope、组织级权限或公开插件使用 OAuth 2.1；公开发布还需要 OpenAI 审核。Secure MCP Tunnel 只用于本机/内网私人开发连接。
+收集（能推断的不重复问）：
 
-## 两层密钥不要混在一起
+- 要在 ChatGPT 完成什么任务；
+- 当前是 REST API、单个 MCP、多个 MCP，还是只有想法；
+- 只读、写入、删除、付款或对外发送等副作用；
+- 自用、小圈子，还是准备公开发布。
 
-- **上游凭据**：IMA、SiYuan 或其他服务的 API Key/Client ID，只放 Cloudflare Secrets 或受保护运行时，绝不填进 ChatGPT。
-- **入口凭据**：专属能力链接中的随机 Token，或 OAuth access token，用来保护公网 MCP 入口。
+只有提示词或 Markdown 流程、没有可调用接口时，明确说明还缺 API/MCP，不制造「上传文档就会自动变成插件」的假象。
 
-## 从零到可用的主流程
+### 2. 引导 Cloudflare 准备（用户手动）
 
-### 1. 用普通话确认目标
+按 [cloudflare-deploy.md](references/cloudflare-deploy.md) 的「准备 Cloudflare」章节逐步引导：
 
-先确认三件事：
+1. 打开 https://dash.cloudflare.com 注册或登录；
+2. 若首次使用 Workers，完成 workers.dev 子域首启；
+3. 创建 API Token：My Profile → API Tokens → Create Token → 自定义，仅授予 `Workers Scripts` 的 `Edit` 权限；
+4. 复制 Account ID（dashboard 首页右侧或 Workers 概览页）。
 
-- 想把什么能力带进 ChatGPT；
-- 目前有 REST API、MCP 地址，还是只有一个 Skill/想法；
-- 是自己用、少量可信用户用，还是准备公开发布。
+收集到 `CF_API_TOKEN` 与 `CF_ACCOUNT_ID` 后，进入下一步。Token 仅用于本次部署的 API 调用，不回显、不落盘；交付出链接后建议用户删除该 Token。
 
-不要一开始要求用户自己选择“翻译、代理、编排”等工程模式。由技能根据材料判断并解释结果。完整提问顺序见 [新手引导与进度反馈](references/onboarding-and-progress.md)。
+### 3. 收集上游凭据并设计
 
-### 2. 读取现有材料并实测上游
+按 [tool-design.md](references/tool-design.md) 自动设计工具面：先最小化、按副作用分层、写操作单独注册。同时按 [auth-and-secrets.md](references/auth-and-secrets.md) 确定认证方式：
 
-读取最近的项目说明、`AGENTS.md`、Worker 源码和 `wrangler` 配置；只记录 Secret 名称，不读取或打印值。对上游至少实测：
+- **默认**：`noauth` + 路径随机令牌（用户数据不隔离、无写操作、自用或小圈子时），ChatGPT 端选 No authentication；
+- 仅当多用户各自数据、scope 化工具、公开产品、必须撤销/审计时才选 OAuth 2.1，并明确告知更麻烦、ChatGPT 端可能验证失败。
 
-1. `initialize`；
-2. `tools/list`；
-3. 一个无副作用的 `tools/call`；
-4. 错误认证；
-5. 超时、非 JSON、SSE 与过大响应。
+上游 API Key / Bearer 只作为运行时 Secret 使用，由你写入 Cloudflare Worker Secret，不进入代码、回复或日志。
 
-若上游返回 `mcp-session-id`，后续请求必须回带；会话失效最多自动重建一次。
+### 4. 生成 Worker 代码
 
-### 3. 选择实现方式
+按 [templates.md](references/templates.md) 生成 Worker：
 
-| 用户手里的东西 | 实现方式 | 默认处理 |
-|---|---|---|
-| REST API | 翻译成 MCP | 用当前 MCP SDK 和 Cloudflare stateless handler 注册任务型工具 |
-| 单个 MCP | 安全代理 | 尽量流式透传，只在必要时修正元数据 |
-| 多个 MCP / 巨大 API | 编排 | 缓存目录、限制并发、压缩为少量高价值入口 |
+- 单个 REST API：翻译为任务型 MCP 工具（每个端点一个工具，按最小工具面原则合并）；
+- 单个 MCP：透传代理，注入上游密钥，加路径令牌校验；
+- 多 MCP：聚合目录 + 静态只读 allowlist，压缩为目录搜索与受控只读执行入口；
+- 本机/内网服务：建议 OpenAI Secure MCP Tunnel，不走 Cloudflare。
 
-代码生成前读 [Cloudflare 实现模板](references/templates.md)。新 stateless 服务优先当前 `createMcpHandler`；不要复制已弃用的 `McpAgent` 新模板。
+代码必须是**零依赖**（不引入 npm 包、不需要构建步骤），保证任何用户上传即可运行。
 
-### 4. 让 ChatGPT 容易正确调用
+### 5. 部署到 Cloudflare
 
-读 [OpenAI 插件契约](references/openai-plugin-contract.md) 和 [元数据与结果](references/metadata-and-results.md)：
+按 [cloudflare-deploy.md](references/cloudflare-deploy.md) 的「自动部署」章节调用 Cloudflare Workers API：
 
-- 工具名稳定、动作开头；
-- `title` 给人看，`description` 写清何时用和何时不用；
-- 参数说明语义、单位、格式、默认值和限制；
-- 准确声明读取、写入、删除、开放网络和幂等性；
-- 有结构化结果时同时提供对象根 `outputSchema`、`structuredContent` 和可读 `content`；
-- 大型 API 不直接暴露数百工具，优先任务型工具或受控的搜索/执行入口。
+1. 查询 workers.dev 子域（`GET /accounts/{account_id}/workers/subdomain`）；
+2. 上传脚本（`PUT /accounts/{account_id}/workers/scripts/{script_name}`，multipart：worker 代码 + metadata，`workers_dev: true`）；
+3. 写入 Secret（上游 API Key、路径令牌、其他密钥，逐个 `PUT .../secrets`）；
+4. 组装链接：`https://<script_name>.<subdomain>.workers.dev/u/<令牌>/mcp`（无令牌需求时也至少校验随机路径，不停留在裸 `/mcp` 匿名暴露私人数据）。
 
-公司知识或文档检索需要 OpenAI 标准路径时，实现只读 `search(query)` 与 `fetch(id)`。
+所有命令同时提供 bash 与 PowerShell 版本（见 cloudflare-deploy.md）。不要在命令参数里带真实密钥；Secret 通过 API 的 JSON 请求体或交互式输入传递，用完即清。
 
-### 5. 创建用户专属链接并在 Cloudflare 验证
+### 6. 验证并交付
 
-按 [快速开始](references/quick-start.md) 生成用户标识、随机 Token、摘要 Secret 和专属 URL。一个 Worker 管理多位可信用户时，逐人创建，不复用 Token，不共享摘要 Secret。
+按 [verification.md](references/verification.md) 在部署后立即验证：
 
-执行 [安全检查清单](references/security-checklist.md)。核心门槛：
+- `POST /mcp` 的 `initialize` 返回正确 protocolVersion 与 serverInfo；
+- `tools/list` 返回预期工具清单（数量、名称与设计一致）；
+- 错误令牌访问返回 401/403；
+- 需要时执行一次获准的只读 `tools/call`，确认上游能通。
 
-- 错用户名、错 Token、缺 Secret 一律拒绝；
-- 完整 URL 不进入源码、Git、截图、示例、分析工具或完整路径日志；
-- 每个链接可独立撤销和轮换；
-- 写入、删除、支付、发帖等工具要求明确确认和执行后读回；
-- 输入、响应体、并发、超时和日志均有界；
-- 不回传堆栈、密钥、上游认证头或内部 URL。
+验证通过后交付：
 
-### 6. 本地检查与生产部署
+- 完整链接（放入对话；同时提示用户妥善保管，链接即凭据）；
+- ChatGPT 配置三步：Add MCP server → 粘贴链接 → 认证选 No authentication；
+- 验收状态按 [acceptance-checklist.md](references/acceptance-checklist.md) 分层说明；
+- 若用户曾把上游密钥粘贴进对话，交付时附一句「建议在上游后台轮换」。
 
-先运行：
+## OAuth 何时才考虑
 
-```powershell
-npm test
-npx tsc --noEmit
-npx wrangler deploy --dry-run
-node <skill-dir>/scripts/audit-mcp.js
-```
+见 [auth-and-secrets.md](references/auth-and-secrets.md)。默认不选 OAuth。只有「大量用户／独立账户数据／复杂 scope／公开发布」四者之一成立且用户确认后才走 OAuth，且必须单独核对官方文档、明示验证失败风险。
 
-环境变量、跨用户隔离检查和 fixture 格式见 [验证与发布](references/validation-and-release.md)。不能只看 HTTP 200；必须检查 JSON-RPC error 和工具结果的 `isError`。
+## 权限边界
 
-部署前记录旧生产 version ID；使用 `wrangler deploy --keep-vars` 单服务部署，完成真实只读回归。写操作先 dry-run，再经用户确认执行并读回；失败只回滚当前 Worker。
+- 可以：读取用户主动提供的凭据并仅用于本次部署调用；调用 Cloudflare Workers API；生成本地临时文件（部署后清理）；生成并交付链接；执行获准的只读验证。
+- 不可以：把任何 API Key / Token / Secret 写入技能文件、GitHub、日志、审计输出或回复正文；用命令参数明文传递密钥；替用户注册账号或输入密码；超出用户授权部署或删除服务；把「能访问」「能连接」说成「插件已可用、全部测试通过」。
+- 链接按凭据处理：完整能力 URL 不回显到公开位置；推测泄露或用户要求时指导轮换（新 URL 生成后旧 URL 必须失效）。
 
-### 7. ChatGPT 接入
+## 表述要求
 
-读 [ChatGPT 接入](references/chatgpt-setup.md)：
-
-- 专属能力链接：ChatGPT 选择“无身份验证”，粘贴完整 URL；Cloudflare 负责验证。
-- OAuth 服务：选择 OAuth，并依赖 DCR/CIMD 或当前支持的客户端注册方式；上游 API Key 不填入 ChatGPT。
-- Secure MCP Tunnel：按 [本地隧道](references/local-tunnel-deploy.md) 连接本机/内网能力。
-
-接入后核对工具数量和读写提示，调用一个真实只读工具，并再次提示“完整链接就是访问密钥”。
-
-## 完成标准
-
-交付时用普通话报告：
-
-- 最终能在 ChatGPT 里做什么；
-- 修改和部署了哪些服务、生产 version ID；
-- 使用专属链接、OAuth 还是 Tunnel；
-- `initialize`、`tools/list`、真实只读调用和错误认证结果；
-- 专属链接的用户名标识、独立撤销/轮换方法和泄露风险（不回显真实链接）；
-- 多用户时的错用户/错 Token 隔离结果；
-- 工具数量、隐藏的高风险工具及原因；
-- 仍不满足的公开审核或权限隔离条件；
-- 回滚路径和未触碰的系统。
+- 「建议」「待实施」「用户确认」「未验证」必须与事实一致。
+- 不能把 HTTP 200、找到工具列表或写出代码方案说成插件已可用。
+- `noauth` 描述 ChatGPT 是否需要 OAuth，不等于服务器可以匿名暴露私人数据。
+- 平台未给具体驳回原因时，只能陈述风险推断，不能宣称找到唯一原因。
+- 官方文档可能更新；部署前按 [official-sources.md](references/official-sources.md) 重新核对。
 
 ## 参考路由
 
-- 新人对话、每步反馈与暂停点：[onboarding-and-progress.md](references/onboarding-and-progress.md)
-- 从零部署和创建用户链接：[quick-start.md](references/quick-start.md)
-- ChatGPT 端怎么填：[chatgpt-setup.md](references/chatgpt-setup.md)
-- Cloudflare 三种实现与用户链接校验：[templates.md](references/templates.md)
-- 当前 OpenAI/MCP 要求：[openai-plugin-contract.md](references/openai-plugin-contract.md)
-- 工具描述、schema、返回和引用：[metadata-and-results.md](references/metadata-and-results.md)
-- 自动审计、fixture、发布门槛：[validation-and-release.md](references/validation-and-release.md)
-- 安全检查：[security-checklist.md](references/security-checklist.md)
-- 常见报错：[troubleshooting.md](references/troubleshooting.md)
-- OpenAI 官方隧道：[local-tunnel-deploy.md](references/local-tunnel-deploy.md)
-- 协议速查：[mcp-protocol-basics.md](references/mcp-protocol-basics.md)
-- 历史踩坑（不能覆盖当前官方规范）：[pitfall-log.md](references/pitfall-log.md)
+- 新手最短路径：[quick-start.md](references/quick-start.md)
+- Cloudflare 部署与 API：[cloudflare-deploy.md](references/cloudflare-deploy.md)
+- Worker 代码模板：[templates.md](references/templates.md)
+- 工具面设计：[tool-design.md](references/tool-design.md)
+- 认证与 Secret：[auth-and-secrets.md](references/auth-and-secrets.md)
+- 部署后验证：[verification.md](references/verification.md)
+- 验收清单：[acceptance-checklist.md](references/acceptance-checklist.md)
+- 故障排查：[troubleshooting.md](references/troubleshooting.md)
+- 历史踩坑：[pitfall-log.md](references/pitfall-log.md)
+- 官方来源：[official-sources.md](references/official-sources.md)
