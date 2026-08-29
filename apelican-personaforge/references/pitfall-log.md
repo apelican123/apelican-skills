@@ -1,53 +1,57 @@
 # 历史踩坑
 
-## 把 `noauth` 当成错误
+## 把 ChatGPT 步骤写成「Add MCP server」
 
-旧审计规则可能认为无验证模式不应出现任何 `securitySchemes`。OpenAI 当前契约允许并推荐工具显式声明 `{ "type": "noauth" }`。出现冲突时更新审计规则，不删除正确元数据。
+官方当前是：Settings → Security and login → Developer mode → https://chatgpt.com/plugins 点 + → 对话里从工具菜单启用。写错按钮名，小白接不上。
 
-## 把 ChatGPT 无验证理解为公网匿名
+## metadata 里写 `workers_dev: true`
 
-`No authentication` 只说明 ChatGPT 不另走 OAuth。数据是私人的话，服务端必须校验令牌——本技能用路径令牌（`/u/<令牌>/mcp`）承担这一层。**禁止部署裸 `/mcp` 匿名端点暴露私人数据**。
+Multipart metadata 官方字段没有这个键。必须 `POST /accounts/{id}/workers/scripts/{name}/subdomain` `{"enabled": true}`，否则上传成功但没有公开 URL。
 
-## 默认给用户 OAuth
+## 模块 MIME 用 `application/javascript`
 
-4.0 之前的默认思维是「写操作/数据隔离 → OAuth」，实际给用户挖坑：OAuth 实现量大、ChatGPT 端验证失败率高、排查成本高。调整为先问三个问题（人多吗？数据分人吗？要撤销审计吗？），默认走 noauth + 路径令牌。
+ES module Worker 要 `application/javascript+module`，否则常见 `main_module name is not present`。
 
-## 让用户装 wrangler / Node
+## PowerShell 的 `metadata=<file>`
 
-公开用户不可能都装开发环境。4.0 的部署路径只依赖 Cloudflare REST API（curl 即可），不让用户碰 wrangler。
+`<` 会被当成重定向。铸造用 Python urllib 组 multipart，不要把 curl 丢给 Windows 小白。
 
-## 模板引入 npm 依赖
+## GET `/mcp` 返回 200 文本
 
-依赖 @modelcontextprotocol/sdk 的 Worker 需要构建产物，用户拿了没法直接用。4.0 模板改为零依赖单文件，上传即跑。
+规范：不提供 SSE 就返回 **405**。返回 `MCP endpoint ready` 会让 ChatGPT 探测失败。curl 自检仍可能绿。
 
-## 把所有上游工具直接拼接
+## 通知返回 JSON-RPC 200
 
-工具数量大、描述相似或权限不明时，模型更难选择。先做来源命名和静态 allowlist，再决定任务型工具或目录搜索 + 受控执行。
+`notifications/initialized` 必须 **202 空 body**。
 
-## 动态目录自动放行
+## initialize 写死 `2025-03-26`
 
-上游新增工具可能带来写入能力。目录刷新只更新候选目录，不更新执行权限；allowlist 通过代码评审后再发布。
+客户端常发 `2025-06-18`。应回显双方都支持的版本。
 
-## 链接与密钥进入记录
+## Secret 存哈希、URL 放明文
 
-终端输出、日志、截图、聊天和审计报告都可能长期保存。链接（含路径令牌）与密钥只进 Cloudflare Secret 或本次需求体，不写入技能文件、GitHub、审计输出或回复正文。
+比较对不上，正确链接 401。LINK_TOKEN 两端用同一段 `token_hex(32)`。
+
+## 默认推 OAuth
+
+自用场景成本高于收益。默认 noauth + 路径令牌。
+
+## 让用户装 wrangler
+
+公开用户装不了开发环境。用 Cloudflare REST + Python。
+
+## 模板留着 `api.example.com`
+
+AI 忘了改配置区，用户连上后一查就失败。生成前必须换成用户真实接口。
+
+## 纯网页 ChatGPT 跑铸造
+
+没有终端就调不了 Cloudflare API。技能必须先说明运行前提。
 
 ## 把连接成功写成全部通过
 
-ChatGPT 能发现工具不等于真实调用成功。构建、部署、传输、调用、连接和用户验收分别记录（见 acceptance-checklist.md）。
+ChatGPT 发现工具 ≠ 真实调用成功。分层记。
 
-## 部署完不验证就交付
+## 忘记首启账号级 workers.dev 子域
 
-曾经「上传成功 = 交付完成」，结果要么 Secret 没生效、要么工具面与设计不符。4.0 强制部署后先跑 verification.md 再交付。
-
-## 依赖旧模板
-
-SDK、Cloudflare handler 和 ChatGPT 页面会变化。实施前查官方当前示例；不要使用未固定依赖、旧 `McpAgent` 新建模板或历史截图作为唯一依据。
-
-## 根据一次驳回猜唯一原因
-
-平台没有给具体理由时，只能列出能力面和风险推断。不能通过改名、藏代码或模糊描述规避审核。
-
-## 忘记引导用户首启 workers.dev 子域
-
-首次使用 Workers 的账号没有子域，部署 API 会失败。准备阶段就把「首启子域」做成显式步骤，避免部署到一半卡住。
+`GET /workers/subdomain` 失败时停下来让用户去控制台启用，不要继续上传。

@@ -1,37 +1,27 @@
 # 个人插件铸造机 · 全自动版
 
-把你手上的接口（API、MCP）变成 ChatGPT 能直接用的插件，**不用写代码，不用装环境**。
+注册一个 Cloudflare，把 Token 交给 AI，拿到一条能接到 ChatGPT 插件的链接。
 
-## 你只需要做两件事
+## 你只做两件事
 
-1. **注册/登录 Cloudflare**，生成一个 API Token（2 分钟）；
-2. **告诉我你要接什么服务**：粘贴接口地址和密钥，或者直接说「我有这些接口」。
+1. 注册/登录 Cloudflare，创建一个只开了 Workers Scripts 编辑权限的 API Token，复制 Account ID。
+2. 告诉 AI 要接什么服务（API 或 MCP 的地址和密钥）。
 
-之后全自动：生成 Worker 代码 → 部署到 Cloudflare → 写出密钥 → 生成一条链接 → 验证能用 → 给你 ChatGPT 配置步骤。你把链接粘进 ChatGPT 的 Add MCP server，选 No authentication，就能开始用。
+AI 会在你的 Cloudflare Workers 里完成配置：生成服务、写入密钥、打开公开地址、验证能用，然后给你一条 URL。你打开 ChatGPT 的 Developer mode，到插件页把这条 URL 加上即可。
 
 ## 什么时候会用到
 
-- 手里有一个 API 或 MCP，想接进 ChatGPT 但不想碰代码；
-- 有多个接口，想合并成一个入口、让 ChatGPT 只看到一个干净的插件；
-- 工具很多，ChatGPT 经常选错工具，想重新设计成更好选的样子；
-- 想给朋友或自己搭一个私人的 GPT 插件，又不想公开数据。
-
-## 它已经帮你做好的设计决策
-
-- **默认不用 OAuth**：OAuth 又麻烦、ChatGPT 端又容易验证失败。自用/小圈子用「链接自带令牌」的方式，ChatGPT 端选 No authentication 即可，服务端仍然校验令牌，不是裸奔；
-- **密钥不进代码**：你的上游 API Key 只写进 Cloudflare 的 Secret，不进入代码、聊天记录和日志；
-- **链接即凭据**：生成的链接带随机令牌，泄露时可以随时作废重生成；
-- **验证后才给你**：部署完先跑一遍协议检查（initialize、tools/list），确认链接活着才交给你，不把「能访问」说成「已可用」。
+- 手里有 API 或 MCP，想在 ChatGPT 里直接问
+- 不想自己装 wrangler、不想碰 OAuth
+- 多个接口想合成一个入口
 
 ## 使用前知道这些
 
-- 需要你有一个 Cloudflare 账号（免费）和它生成的 API Token；
-- 你的上游必须是真的可调用接口（API 地址或 MCP 地址 + 密钥）；只有提示词/文档而没有接口时，这个技能造不出插件，会先告诉你缺口；
-- 写操作、付款、对外发送这类高风险能力会单独设计、明确提示，不会藏进通用执行器；
-- 需要多用户各自数据隔离、公开发布给大量用户时，才需要 OAuth——技能会先跟你确认，并告诉你它更麻烦。
+- 需要能写文件、能联网的 AI（Hermes、Codex、Claude Code、Cursor）。纯网页 ChatGPT 没法替你部署。
+- 必须先有可调用的接口；只有提示词造不出插件。
+- ChatGPT 需要打开 Developer mode；有的账号没有这项。
+- 完整链接就是钥匙，不要发到群里。
 
 ## 可以这样说
 
-- 「帮我把这个 API 接进 ChatGPT：地址 https://api.example.com/v1，密钥 <你的密钥>，只有查询功能」
-- 「我有三个 MCP，想合并成一个插件给我自己用」
-- 「先别部署，只要一份方案」
+「帮我把这个 API 接进 ChatGPT：地址 …，密钥 …。Cloudflare Account ID 和 Token 是 …，只要查询，自用。」

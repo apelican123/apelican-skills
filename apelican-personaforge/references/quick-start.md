@@ -1,50 +1,49 @@
-# 快速开始（0 到链接的最短路径）
+# 快速开始（小白：注册 Cloudflare → 拿到 ChatGPT 链接）
 
-这条路径预计 10 分钟内走完。你在对话里把它当指令念给 AI 即可。
+你只做 Cloudflare 账号这件事。部署和生成链接由 AI 完成。
 
-## 你（用户）要做的事
+## 先确认
 
-1. 打开 https://dash.cloudflare.com 注册或登录；首次用 Workers 的话，进入 Workers & Pages 按提示启用 `workers.dev` 子域；
-2. My Profile → API Tokens → Create Token → 自定义：权限只勾 `Workers Scripts` → `Edit`，复制 Token；
-3. 复制 Account ID（dashboard 首页右侧）；
-4. 准备上游接口信息：地址 + 密钥（或 MCP 地址 + 密钥）。
+跟你说话的 AI 必须能写文件、能访问互联网（Hermes / Codex / Claude Code / Cursor）。把这个技能丢进纯网页 ChatGPT，它没法替你部署。
 
-## 然后对 AI 说
+## 你做的事
+
+1. 打开 https://dash.cloudflare.com 注册或登录。
+2. 进入 Workers，按提示启用 `workers.dev` 子域（第一次必须做）。
+3. 头像 → My Profile → API Tokens → Create Token → Custom：
+   - `Account` → `Workers Scripts` → `Edit`
+4. 复制 API Token 和 Account ID。
+5. 准备要接的接口：API 或 MCP 的地址和密钥。
+
+然后对 AI 说：
 
 ```text
-帮我把这个 API 铸造成 ChatGPT 插件：
-- 功能：<一句话说明要做什么>
+帮我铸成 ChatGPT 插件：
+- 功能：<一句话>
 - 接口：<地址>
 - 密钥：<密钥>
-- 我的 Cloudflare Account ID：<ID>
-- 我的 Cloudflare API Token：<Token>
-- 只有只读查询，自用
+- Cloudflare Account ID：<ID>
+- Cloudflare API Token：<Token>
+- 只读，自用
 ```
 
-或者更简单：
+## AI 做的事（你不用懂）
 
-```text
-铸一个 ChatGPT 插件，接我这两个 MCP：<MCP1 地址+密钥>、<MCP2 地址+密钥>，自用。Cloudflare 的 Token 和 Account ID 我已经准备好了：<粘贴>
-```
+生成 Worker → 上传到你的 Cloudflare → 写入密钥 → **打开这个 Worker 的 workers.dev** → 验证协议 → 给你一条：
 
-## AI 会完成的步骤（你不需要懂）
+`https://<脚本名>.<子域>.workers.dev/u/<令牌>/mcp`
 
-1. 自动设计工具面（把接口整理成 ChatGPT 好选的工具）；
-2. 生成零依赖 Worker 代码；
-3. 查询你的 workers.dev 子域 → 上传脚本 → 写入密钥（上游 Key、路径令牌）；
-4. 拼出链接 `https://<脚本名>.<你的用户名>.workers.dev/u/<令牌>/mcp`；
-5. 验证：错误令牌 401、initialize、tools/list、一次只读调用（征得你同意后）；
-6. 交付链接 + ChatGPT 配置步骤。
+## 你把链接接到 ChatGPT
 
-## 你在 ChatGPT 里做的事
+1. ChatGPT → Settings → Security and login → 打开 **Developer mode**
+2. 打开 https://chatgpt.com/plugins → 点 **+**
+3. 粘贴完整链接（含 `/mcp`），认证选 **No authentication**
+4. 新开对话，从工具菜单启用这个连接，再说「帮我查一下 XX」
 
-1. 打开 ChatGPT → 设置或插件管理 → Add MCP server；
-2. 粘贴链接（整条，含 `/u/` 那段）；
-3. 认证选 **No authentication**；
-4. 回到对话，用自然语言试试：「帮我查一下 XX」。
+详细点按点见 [chatgpt-setup.md](chatgpt-setup.md)。
 
-## 如果卡住
+## 卡住了
 
-- 部署报错 → 把报错原文发给 AI，对照 [troubleshooting.md](troubleshooting.md)；
-- ChatGPT 连接不上 → 先用 [verification.md](verification.md) 的 curl 命令确认链接本身正常；
-- 链接泄露或想作废 → 让 AI 重新生成令牌，旧链接立即失效。
+- 部署报错：把报错原文发回 AI，对照 [troubleshooting.md](troubleshooting.md)
+- ChatGPT 连不上：先按 [verification.md](verification.md) 测 URL
+- 链接泄露：让 AI 重写令牌，旧链接立刻失效

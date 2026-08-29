@@ -23,7 +23,7 @@
 | Skill | 当前版本 | 适合解决什么 | 入口 |
 |---|---:|---|---|
 | **apelican-ark** | 2.2.0 | 给 Codex 和 WorkBuddy 做本地备份；换电脑或重装前先预览，确认后再备份和恢复 | [查看介绍](#apelican-ark) |
-| **apelican-personaforge** | 4.0.0 | 把已有的 API 或 MCP 铸成 ChatGPT 插件；登录 Cloudflare 后，AI 自动部署并给出可粘贴的链接 | [查看介绍](#apelican-personaforge) |
+| **apelican-personaforge** | 4.0.1 | 注册 Cloudflare 后，AI 自动在 Workers 部署并给出可接到 ChatGPT 插件的链接 | [查看介绍](#apelican-personaforge) |
 
 ## 怎么安装
 
@@ -97,7 +97,7 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 1. 注册或登录 Cloudflare，创建一个只开了 `Workers Scripts: Edit` 的 API Token，并复制 Account ID。
 2. 把上游接口交给技能：MCP 地址加密钥，或 REST API 地址加密钥。
 
-之后技能会生成零依赖的 Worker、用 Cloudflare API 部署、写入密钥、拼出链接，并先验证链接能用，再交给你。你在 ChatGPT 里 Add MCP server，粘贴完整链接，认证选 No authentication 就可以开始用。
+之后技能会在你的 Cloudflare Workers 里上传服务、写入密钥、打开 workers.dev，并先验证协议再给你链接。你在 ChatGPT 打开 Developer mode，到 https://chatgpt.com/plugins 点 +，粘贴完整 URL（含 `/mcp`），认证选 No authentication；然后新开对话，从工具菜单启用这个连接。
 
 私人使用默认不走 OAuth。OAuth 更麻烦，ChatGPT 端也更容易验证失败。默认是「链接自带随机令牌」：ChatGPT 端选无身份验证，服务端仍然校验路径里的令牌，不是把私人数据裸放到公网。只有用户很多、数据要按人隔离，或必须独立撤销和审计时，才值得改用 OAuth。
 
@@ -110,13 +110,14 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 
 有几个边界需要提前知道：
 
+- 需要能写文件、能联网的 AI（例如 Codex、Claude Code、Hermes、Cursor）。纯网页版 ChatGPT 没法替你部署。
 - 完整链接本身就是访问密钥，不能截图、公开或转发；泄露后要立即作废重生成。
 - 账号注册、登录和创建 Token 必须由你本人完成，技能不会也不能替你输入密码。
 - 只有提示词或 Markdown 流程、没有可调用接口的 Skill，不能直接变成远程插件。
 - 写操作、付款、对外发送会单独设计，不会藏进通用执行器。
 - 私人链接能连上，不代表已经通过 OpenAI 的公开审核。
 
-公开包是纯文档加可复制的 Worker 模板，不再附带需要本机 Node 才能跑的 JavaScript 小工具。部署走 Cloudflare REST API，验证命令同时给了 bash 和 PowerShell。
+公开包是纯文档加可复制的 Worker 模板。部署由 AI 用 Python 调 Cloudflare API 完成，不要求你安装 wrangler。
 
 [查看完整 SKILL.md](./apelican-personaforge/SKILL.md) · [查看使用说明](./apelican-personaforge/skill-card.md)
 

@@ -1,16 +1,13 @@
 # 官方来源
 
-实现者在开发、部署和排障前重新核对：
+部署和接入前重新打开这些页面，不要用本技能的旧截图当现行规则。
 
+- ChatGPT 连接与测试：https://developers.openai.com/plugins/deploy/connect-chatgpt
+- ChatGPT Developer mode：https://developers.openai.com/api/docs/guides/developer-mode
 - OpenAI 插件认证：https://developers.openai.com/plugins/build/auth
-- OpenAI 连接与测试：https://developers.openai.com/plugins/deploy/connect-chatgpt
 - OpenAI MCP server：https://developers.openai.com/plugins/build/mcp-server
-- OpenAI 插件审核：https://developers.openai.com/plugins/deploy/app-review
-- Cloudflare Remote MCP：https://developers.cloudflare.com/agents/model-context-protocol/guides/remote-mcp-server/
-- Cloudflare Workers 脚本 API：https://developers.cloudflare.com/api/resources/workers/subresources/scripts/
-- Cloudflare Workers Secret 绑定：https://developers.cloudflare.com/api/resources/workers/subresources/scripts/methods/edit/（以当前 API 文档实际路径为准）
-- Cloudflare 获取 Account ID / 子域：https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/
-- Cloudflare Workers 日志：https://developers.cloudflare.com/workers/observability/logs/workers-logs/
-- MCP 规范：https://modelcontextprotocol.io/specification/
-
-使用原则：官方文档可能更新。API 端点、字段名、ChatGPT 端配置界面以最新官方内容为准；本技能的历史截图、命令与模板只是起点，不是最终规则。
+- MCP Streamable HTTP：https://modelcontextprotocol.io/specification/2025-03-26/basic/transports
+- Cloudflare 上传 Worker 模块：https://developers.cloudflare.com/api/resources/workers/subresources/scripts/methods/update/
+- Multipart metadata（无 workers_dev 字段）：https://developers.cloudflare.com/workers/configuration/multipart-upload-metadata/
+- 打开脚本 workers.dev：https://developers.cloudflare.com/api/resources/workers/subresources/scripts/subresources/subdomain/methods/create
+- Worker Secret：https://developers.cloudflare.com/api/resources/workers/subresources/scripts/subresources/secrets/methods/update/

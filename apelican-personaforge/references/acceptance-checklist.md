@@ -21,8 +21,9 @@
 
 ## 交付说明（最终给用户的内容）
 
-- 完整链接（注：链接即凭据，提示妥善保管）；
-- ChatGPT 配置三步：Add MCP server → 粘贴链接 → 认证选 No authentication；
+- 完整链接；
+- ChatGPT 四步：Developer mode → chatgpt.com/plugins 点 + → 粘贴含 `/mcp` 的 URL → 新对话从工具菜单启用；
+- 不要写「Add MCP server」。
 - 预期工具数量和名称；
 - 一条安全的只读验收提示（例：「用 search_documents 搜一下 XX」）；
 - 成功、认证失败和上游失败的预期差异；

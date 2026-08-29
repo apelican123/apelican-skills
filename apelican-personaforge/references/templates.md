@@ -1,6 +1,6 @@
 # Worker 代码模板（零依赖，上传即跑）
 
-铸造机默认生成**零依赖** Worker：不引入 npm 包、不需要打包构建。一个 `worker.js` + 一个 `metadata.json` 上传即运行。实现的是 MCP over Streamable HTTP（JSON-RPC 2.0 over POST），与 ChatGPT 的 Add MCP server 兼容。
+铸造机默认生成**零依赖** Worker：不引入 npm 包、不需要打包构建。一个 `worker.js` 上传即运行。传输是 MCP Streamable HTTP：客户端 POST JSON-RPC；本模板不提供 SSE，因此 **GET 必须返回 405**。ChatGPT 插件接入步骤见 [chatgpt-setup.md](chatgpt-setup.md)。
 
 ## 文件清单
 
@@ -14,10 +14,11 @@ metadata.json    # 部署元数据（main_module 必须 = worker.js）
 ```json
 {
   "main_module": "worker.js",
-  "workers_dev": true,
   "compatibility_date": "2026-08-01"
 }
 ```
+
+不要在 metadata 里写 `workers_dev`。打开公开 URL 必须另调 `POST .../scripts/{name}/subdomain`，见 [cloudflare-deploy.md](cloudflare-deploy.md)。
 
 ## worker.js 总模板
 
@@ -55,12 +56,14 @@ const REST_TOOLS = [
 ];
 
 // MCP 透传上游：直接转发 tools/list 与 tools/call
-const MCP_UPSTREAM = null; // 例如 { "url": "https://upstream.example.com/mcp", "authHeader": "Authorization", "authValue": "Bearer <key>" }
+const MCP_UPSTREAM = null; // 例如 { "url": "https://upstream.example.com/mcp", "authHeader": "Authorization" }
+// 上游密钥只放 env.UPSTREAM_KEY，不要把真实 Key 写进 authValue
 // 多上游时用数组 + ROUTE（见文末「多 MCP 聚合」）
 
 // ============ 以下为协议实现，一般无需修改 ============
 
-const VERSION = "4.0.0";
+const VERSION = "4.0.1";
+const SUPPORTED_PROTOCOL = ["2025-03-26", "2025-06-18"];
 
 function constantTimeEqual(a, b) {
   if (typeof a !== "string" || typeof b !== "string") return false;
@@ -93,7 +96,7 @@ function jsonRpc(id, result, isError) {
   }
   return new Response(JSON.stringify(payload), {
     status: 200,
-    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+    headers: { "Content-Type": "application/json" }
   });
 }
 
@@ -216,16 +219,15 @@ async function handleToolsCall(body, env) {
 
 export default {
   async fetch(request, env) {
-    // 1. 认证：路径令牌或 Bearer 二选一，错误令牌一律 401
     if (!authOk(request, env)) {
       return new Response("unauthorized", { status: 401 });
     }
 
-    // 2. 只接受 POST JSON-RPC
+    // 不提供 SSE：GET 必须 405，不能返回 200 文本（ChatGPT 会按规范探测）
+    if (request.method === "GET" || request.method === "HEAD" || request.method === "DELETE") {
+      return new Response("method not allowed", { status: 405 });
+    }
     if (request.method !== "POST") {
-      if (request.method === "GET") {
-        return new Response("MCP endpoint ready", { status: 200 });
-      }
       return new Response("method not allowed", { status: 405 });
     }
     if (!request.headers.get("content-type")?.includes("application/json")) {
@@ -239,16 +241,24 @@ export default {
       return new Response("invalid json", { status: 400 });
     }
 
-    // 3. 路由 JSON-RPC 方法
-    switch (body.method) {
-      case "initialize":
+    const method = body && body.method;
+    // 通知没有 id：必须 202 空 body
+    if (typeof method === "string" && method.startsWith("notifications/")) {
+      return new Response(null, { status: 202 });
+    }
+
+    switch (method) {
+      case "initialize": {
+        const requested = body.params && body.params.protocolVersion;
+        const protocolVersion = SUPPORTED_PROTOCOL.includes(requested)
+          ? requested
+          : "2025-03-26";
         return jsonRpc(body.id, {
-          protocolVersion: "2025-03-26",
+          protocolVersion,
           capabilities: { tools: {} },
           serverInfo: { name: "apelican-personaforge", version: VERSION }
         });
-      case "notifications/initialized":
-        return jsonRpc(body.id, {});
+      }
       case "ping":
         return jsonRpc(body.id, {});
       case "tools/list":
@@ -256,7 +266,7 @@ export default {
       case "tools/call":
         return await handleToolsCall(body, env);
       default:
-        return jsonRpc(body.id, "method not supported: " + body.method, true);
+        return jsonRpc(body.id, "method not supported: " + method, true);
     }
   }
 };
@@ -279,8 +289,8 @@ export default {
 
 ```javascript
 const MCP_UPSTREAMS = [
-  { id: "docs", url: "https://docs.example.com/mcp", authHeader: "Authorization", authValue: "Bearer <key>" },
-  { id: "wiki", url: "https://wiki.example.com/mcp", authHeader: "Authorization", authValue: "Bearer <key>" }
+  { id: "docs", url: "https://docs.example.com/mcp", authHeader: "Authorization" },
+  { id: "wiki", url: "https://wiki.example.com/mcp", authHeader: "Authorization" }
 ];
 // 工具名为 <来源id>:<工具名>，允许执行的工具放入静态 allowlist：
 const ALLOWLIST = ["docs:search", "docs:get", "wiki:search"];
