@@ -24,8 +24,8 @@
 |---|---:|---|---|
 | **apelican-ark** | 3.2.3 | 给 Codex、WorkBuddy 和 Hermes 做本地备份；换电脑或重装前先预览，确认后再备份和恢复 | [查看介绍](#apelican-ark) |
 | **apelican-personaforge** | 4.0.1 | 注册 Cloudflare 后，AI 自动在 Workers 部署并给出可接到 ChatGPT 插件的链接 | [查看介绍](#apelican-personaforge) |
-| **apelican-press** | 1.3.5 | 付梓：稿成即付梓。写好 Markdown，自动排版进草稿箱 | [查看介绍](#apelican-press) |
-| **apelican-codex** | 1.0.4 | 影札：丢一条 B站或 YouTube 链接，整理成能存进笔记的 Markdown | [查看介绍](#apelican-codex) |
+| **apelican-press** | 1.3.5 | 稿成即付梓。写好 Markdown，自动排版进草稿箱 | [查看介绍](#apelican-press) |
+| **apelican-codex** | 1.0.4 | 丢一条 B站或 YouTube 链接，整理成能存进笔记的 Markdown | [查看介绍](#apelican-codex) |
 
 ## 怎么安装
 
@@ -127,7 +127,7 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 
 ### apelican-press
 
-> **付梓**：稿成即付梓。写好 Markdown，自动排版、配封面，存进公众号草稿箱。粉丝此时还看不见。适用于：公众号排版/公众号推文/一键排版/封面配图/公众号/排版/推文/草稿箱/Markdown/封面/wenyan/公众号文章/公众号发布
+> 稿成即付梓。写好 Markdown，自动排版、配封面，存进公众号草稿箱。粉丝此时还看不见。适用于：公众号排版/公众号推文/一键排版/封面配图/公众号/排版/推文/草稿箱/Markdown/封面/wenyan/公众号文章/公众号发布
 
 我做这个技能，是因为写完 Markdown 之后，还要进编辑器调行距、一张张传图、再去好几个长得很像的后台找 AppID。真正劝退的往往不是写作，是「贴」。
 
@@ -154,7 +154,7 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 
 ### apelican-codex
 
-> **影札**：丢一条 B站或 YouTube 链接，整理成能存进笔记的 Markdown。适用于：视频总结/转文字/视频笔记/文字笔记/视频转写/B站字幕/视频/markdown/YouTube/字幕/转录
+> 丢一条 B站或 YouTube 链接，整理成能存进笔记的 Markdown。适用于：视频总结/转文字/视频笔记/文字笔记/视频转写/B站字幕/视频/markdown/YouTube/字幕/转录
 
 我做这个技能，是因为收藏夹里堆着很多视频，真要回头用时，却不想把整段口播再听一遍。网课、访谈、长吐槽都一样：需要一份能检索、能进笔记的文稿，而不是又一次打开播放器。
 
