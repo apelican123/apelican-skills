@@ -1,0 +1,4 @@
+interface:
+  display_name: "方舟"
+  short_description: "跨 Windows/macOS/Linux 迁移完整 Hermes 用户态与依赖"
+  default_prompt: "Use $apelican-ark to preview a safe backup of my Codex, WorkBuddy, Hermes, and TencentDB memory environment."

@@ -22,7 +22,7 @@
 
 | Skill | 当前版本 | 适合解决什么 | 入口 |
 |---|---:|---|---|
-| **apelican-ark** | 2.2.0 | 给 Codex 和 WorkBuddy 做本地备份；换电脑或重装前先预览，确认后再备份和恢复 | [查看介绍](#apelican-ark) |
+| **apelican-ark** | 3.2.0 | 给 Codex、WorkBuddy 和 Hermes 做本地备份；换电脑或重装前先预览，确认后再备份和恢复 | [查看介绍](#apelican-ark) |
 | **apelican-personaforge** | 4.0.1 | 注册 Cloudflare 后，AI 自动在 Workers 部署并给出可接到 ChatGPT 插件的链接 | [查看介绍](#apelican-personaforge) |
 | **apelican-wechat-publisher** | 1.3.0 | 把写好的 Markdown 排成公众号样式，保存到草稿箱；不会自动群发 | [查看介绍](#apelican-wechat-publisher) |
 
@@ -64,19 +64,21 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 
 ### apelican-ark
 
-> 给 Codex 和 WorkBuddy 做一份看得懂、能检查的本地备份，换电脑或重装后再安全恢复。
+> 给 Codex、WorkBuddy 和 Hermes 做一份看得懂、能检查的本地备份，换电脑或重装后再安全恢复。
 
 我做方舟，是因为 AI 工具真正用顺手以后，值得留下来的不只是一个软件，还有自己装过的技能、调好的设置、积累的记忆和自动化。真到换电脑时，如果这些东西都要从头再来，会很麻烦。
 
 方舟会先把准备带走的内容列清楚，不会一上来就改文件。你确认范围后，它才在本机生成备份；恢复时也会先告诉你准备写入什么，遇到同名文件会先保留新设备上的原文件。
 
-你可以按需要选择三种范围：
+你可以按需要选择五种范围：
 
-- 基础备份：身份、技能、设置、记忆和自动化。
-- 中等备份：再加入连接器和项目索引。
+- 基础备份：Codex、WorkBuddy、Hermes 的身份、技能、设置、记忆和自动化。
+- 中等备份：再加入连接器、Hermes 扩展状态和项目索引。
 - 全量备份：再尽力保存本地能找到的会话文件与索引。
+- 完整迁移包：Hermes 全 profiles、桌面可迁移偏好、外部技能源、cron/projects 索引与本地 MCP 依赖闭包。
+- 凭据舱：单独的小型 AES 加密包，只装静态密钥与可迁移 OAuth，不含记忆、会话和项目。
 
-普通备份只需要 Python 3.10 或更高版本。确实需要迁移用户自己管理的敏感配置时，可以单独确认并放进 AES 加密包；这个功能还需要安装 `pyzipper`。
+普通备份只需要 Python 3.10 或更高版本。确实需要迁移用户自己管理的敏感配置时，可以单独确认并放进 AES 加密包（需要 `pyzipper`）；**这一步请一定记住方舟总密码——密码丢失后，加密包里的凭据将永远无法恢复**。
 
 有几个限制需要提前知道：
 
@@ -85,7 +87,7 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 - 会话文件能被保存，不等于旧聊天一定会在新版客户端里完整出现；这会受到客户端版本、索引和服务端数据影响。
 - WorkBuddy 自动化不会通过复制数据库强行恢复；技能只生成计划，再通过产品提供的正式方式执行和检查。
 
-[查看完整 SKILL.md](./apelican-ark/SKILL.md) · [查看简明介绍](./apelican-ark/skill-card.md)
+[查看完整 SKILL.md](./apelican-ark/SKILL.md)
 
 ### apelican-personaforge
 

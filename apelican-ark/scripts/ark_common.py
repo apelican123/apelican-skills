@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-ark_common.py — 共享规则与工具：ark 备份/恢复技能（v1.0）
+ark_common.py — 共享规则与工具：ark 备份/恢复技能（v3.2）
 
 职责：
-- 定位 Codex / WorkBuddy 主目录（支持 CODEX_HOME 环境变量覆盖）
+- 定位 Codex / WorkBuddy / Hermes 主目录（支持对应环境变量覆盖）
 - 目录与文件分类规则（技能识别、运行时排除、敏感排除）
 - 密钥扫描与脱敏（JSON 结构脱敏 + 行级脱敏）
 - 哈希、软链接、frontmatter 解析等工具函数
@@ -18,17 +18,502 @@ ark_common.py — 共享规则与工具：ark 备份/恢复技能（v1.0）
 from __future__ import annotations
 
 import hashlib
+import base64
+import binascii
 import json
 import os
 import re
+import sqlite3
+import stat
 import sys
 import zipfile
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+from urllib.parse import urlsplit
 
-SCHEMA_VERSION = "2.0"
+SCHEMA_VERSION = "2.2"
 TOOL_NAME = "ark"
-TOOL_VERSION = "3.0.0"
+TOOL_VERSION = "3.2.0"
+
+# The only npm native credential addon Ark is allowed to rebuild. This is a
+# code-owned trust anchor, not a manifest-extensible package or command list.
+TRUSTED_KEYTAR_NATIVE_CREDENTIAL_ADDON = {
+    "type": "keytar",
+    "version": "7.9.0",
+    "resolved": "https://registry.npmjs.org/keytar/-/keytar-7.9.0.tgz",
+    "integrity": "sha512-VPD8mtVtm5JNtA2AErl6Chp06JBfy7diFQ7TQQhdpWOl6MrCRB+eRbvAZUsbGQS9kiMq0coJsy0W0vHpDCkWsQ==",
+    "hasInstallScript": True,
+}
+TRUSTED_NODE_MCP_LAUNCH_SUFFIXES = {
+    ("@softeria/ms-365-mcp-server", "0.145.2"): ("--preset", "mail,calendar"),
+}
+TRUSTED_EXTERNAL_TARGETS = {
+    ("codex", None): "~/.codex/skills",
+    ("external-root", None): "~/.agents/skills",
+    ("known-portable-config", "himalaya-config"): "~/.config/himalaya",
+    ("known-portable-config", "yescan-config"): "~/.yescan",
+    ("known-portable-config", "opencli-config"): "~/.opencli",
+    ("known-portable-config", "workbuddy-key-fallback"): "~/.workbuddy-key-fallback",
+    ("portable-oauth", "opencode-auth"): "~/.local/share/opencode",
+}
+
+NPM_REGISTRY_HOST = "registry.npmjs.org"
+INSTALLATION_STRATEGY_ORDER = [
+    "trusted-source-when-verifiable",
+    "embedded-source-fallback",
+]
+LOCAL_MCP_PORTABLE_STATE = {"state/managed-playlists.json"}
+_PACKAGE_NAME = re.compile(r"^(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*$", re.IGNORECASE)
+_EXACT_VERSION = re.compile(r"^[0-9][0-9A-Za-z.!+_-]*$")
+_SHA256_HASH = re.compile(r"sha256:([0-9a-fA-F]{64})")
+_NPM_INTEGRITY = re.compile(r"sha512-[A-Za-z0-9+/]+={0,2}")
+
+
+def is_trusted_keytar_native_credential_addon(value: object) -> bool:
+    """Require the exact typed marker, including JSON scalar types and keys."""
+    if type(value) is not dict:  # JSON objects decode to an exact dict here.
+        return False
+    expected = TRUSTED_KEYTAR_NATIVE_CREDENTIAL_ADDON
+    if set(value) != set(expected):
+        return False
+    return (
+        type(value.get("type")) is str and value["type"] == expected["type"]
+        and type(value.get("version")) is str and value["version"] == expected["version"]
+        and type(value.get("resolved")) is str and value["resolved"] == expected["resolved"]
+        and type(value.get("integrity")) is str and value["integrity"] == expected["integrity"]
+        and type(value.get("hasInstallScript")) is bool
+        and value["hasInstallScript"] is expected["hasInstallScript"]
+    )
+
+
+def _hash_lock_bytes(lock_bytes: bytes) -> str:
+    return hashlib.sha256(lock_bytes).hexdigest()
+
+
+def parse_hash_locked_requirements(lock_bytes: bytes) -> list[dict] | None:
+    """Return only exact package/version/sha256 evidence from a uv requirements lock.
+
+    None means the file is not a self-contained hash-locked requirements file.
+    An empty list is valid only for an explicitly generated, zero-dependency uv lock.
+    Index/repository URLs are intentionally neither inferred nor returned.
+    """
+    try:
+        text = lock_bytes.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+    physical = text.splitlines()
+    logical: list[str] = []
+    current = ""
+    for raw in physical:
+        stripped = raw.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        current = (current + " " + stripped).strip()
+        if current.endswith("\\"):
+            current = current[:-1].rstrip()
+            continue
+        logical.append(current)
+        current = ""
+    if current:
+        logical.append(current)
+
+    evidence: list[dict] = []
+    seen: set[str] = set()
+    for statement in logical:
+        # The lock is executed verbatim by uv, so every installer directive is
+        # part of the trust boundary.  Ark accepts package pins plus hashes
+        # only; index/find-links/trusted-host/constraint options must never be
+        # able to redirect restore-time resolution.
+        if statement.startswith("--"):
+            return None
+        match = re.match(
+            r"^([A-Za-z0-9][A-Za-z0-9._-]*)==([^\s;\\]+)(?:\s+(.+))?$",
+            statement,
+        )
+        if not match or not _PACKAGE_NAME.fullmatch(match.group(1)):
+            return None
+        package, version, tail = match.group(1), match.group(2), match.group(3) or ""
+        if not _EXACT_VERSION.fullmatch(version):
+            return None
+        tail_tokens = tail.split()
+        if (not tail_tokens
+                or any(not re.fullmatch(r"--hash=sha256:[0-9a-fA-F]{64}", token)
+                       for token in tail_tokens)):
+            return None
+        hashes = sorted({f"sha256:{value.lower()}" for value in _SHA256_HASH.findall(tail)})
+        if not hashes:
+            return None
+        normalized = package.lower().replace("_", "-")
+        if normalized in seen:
+            return None
+        seen.add(normalized)
+        evidence.append({
+            "type": "pypi-locked-requirement",
+            "package": package,
+            "version": version,
+            "hashes": hashes,
+            "role": "locked-dependency",
+        })
+    if not evidence:
+        lower = text.lower()
+        if "autogenerated by uv" not in lower or "generate-hashes" not in lower:
+            return None
+    return sorted(evidence, key=lambda item: item["package"].lower())
+
+
+def is_safe_npm_registry_url(value: object, package: str | None = None,
+                             version: str | None = None) -> bool:
+    if type(value) is not str:
+        return False
+    try:
+        parsed = urlsplit(value)
+        port = parsed.port
+    except ValueError:
+        return False
+    safe = (
+        parsed.scheme == "https"
+        and parsed.hostname == NPM_REGISTRY_HOST
+        and parsed.username is None
+        and parsed.password is None
+        and port is None
+        and not parsed.query
+        and not parsed.fragment
+        and parsed.path.startswith("/")
+        and parsed.path.endswith(".tgz")
+    )
+    if not safe or package is None or version is None:
+        return safe
+    package_leaf = package.rsplit("/", 1)[-1]
+    return (
+        parsed.path.startswith(f"/{package}/-/")
+        and parsed.path.endswith(f"/{package_leaf}-{version}.tgz")
+    )
+
+
+def is_sha512_sri(value: object) -> bool:
+    if type(value) is not str or not _NPM_INTEGRITY.fullmatch(value):
+        return False
+    try:
+        digest = base64.b64decode(value[len("sha512-"):], validate=True)
+    except (ValueError, binascii.Error):
+        return False
+    return len(digest) == 64
+
+
+def _npm_package_from_lock_path(lock_path: str) -> str | None:
+    parts = PurePosixPath(lock_path.replace("\\", "/")).parts
+    indexes = [index for index, part in enumerate(parts) if part == "node_modules"]
+    if not indexes:
+        return None
+    tail = parts[indexes[-1] + 1:]
+    if not tail:
+        return None
+    package = "/".join(tail[:2]) if tail[0].startswith("@") and len(tail) >= 2 else tail[0]
+    return package if _PACKAGE_NAME.fullmatch(package) else None
+
+
+def _npm_dependency_is_locked(packages: dict, owner_path: str, name: str) -> bool:
+    """Model npm's ancestor lookup without accepting external/link fallbacks."""
+    owner_parts = list(PurePosixPath(owner_path).parts) if owner_path else []
+    while True:
+        candidate = "/".join([*owner_parts, "node_modules", *name.split("/")])
+        if candidate in packages:
+            return True
+        if not owner_parts:
+            return False
+        try:
+            marker = len(owner_parts) - 1 - owner_parts[::-1].index("node_modules")
+        except ValueError:
+            owner_parts = []
+        else:
+            owner_parts = owner_parts[:marker]
+
+
+def parse_npm_root_provenance(lock_bytes: bytes) -> tuple[int, list[dict]] | None:
+    """Validate the complete npm v3 registry closure and return root evidence.
+
+    npm receives the embedded lock verbatim.  Consequently every installable
+    package entry must have an exact official-registry tarball and sha512 SRI;
+    file/link/Git/HTTP/custom-registry and incomplete entries fail closed.
+    """
+    try:
+        data = json.loads(lock_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if (type(data) is not dict or data.get("lockfileVersion") != 3
+            or "dependencies" in data):
+        return None
+    packages = data.get("packages")
+    root = packages.get("") if type(packages) is dict else None
+    if type(root) is not dict:
+        return None
+    root_names: set[str] = set()
+    safe_root_spec = re.compile(r"[~^]?[0-9][0-9A-Za-z.*+_-]*")
+    for field in ("dependencies", "optionalDependencies", "devDependencies", "peerDependencies"):
+        values = root.get(field, {})
+        if type(values) is not dict:
+            return None
+        for name, spec in values.items():
+            if (type(name) is not str or not _PACKAGE_NAME.fullmatch(name)
+                    or type(spec) is not str or not safe_root_spec.fullmatch(spec)):
+                return None
+            root_names.add(name)
+
+    for lock_path, entry in packages.items():
+        if lock_path == "":
+            continue
+        if (type(lock_path) is not str or type(entry) is not dict
+                or entry.get("link") is True):
+            return None
+        package = _npm_package_from_lock_path(lock_path)
+        if package is None:
+            return None
+        version = entry.get("version")
+        resolved = entry.get("resolved")
+        integrity = entry.get("integrity")
+        if (
+            type(version) is not str or not _EXACT_VERSION.fullmatch(version)
+            or not is_safe_npm_registry_url(resolved, package, version)
+            or not is_sha512_sri(integrity)
+        ):
+            return None
+        for field in ("dependencies", "optionalDependencies"):
+            dependencies = entry.get(field, {})
+            if type(dependencies) is not dict:
+                return None
+            for name, spec in dependencies.items():
+                if (type(name) is not str or not _PACKAGE_NAME.fullmatch(name)
+                        or type(spec) is not str or not spec
+                        or not _npm_dependency_is_locked(packages, lock_path, name)):
+                    return None
+        peers = entry.get("peerDependencies", {})
+        peer_meta = entry.get("peerDependenciesMeta", {})
+        if type(peers) is not dict or type(peer_meta) is not dict:
+            return None
+        for name, spec in peers.items():
+            meta = peer_meta.get(name, {})
+            optional = type(meta) is dict and meta.get("optional") is True
+            if (type(name) is not str or not _PACKAGE_NAME.fullmatch(name)
+                    or type(spec) is not str or not spec
+                    or (not optional and not _npm_dependency_is_locked(
+                        packages, lock_path, name
+                    ))):
+                return None
+
+    evidence: list[dict] = []
+    for name in sorted(root_names, key=str.lower):
+        entry = packages.get(f"node_modules/{name}")
+        if type(entry) is not dict:
+            return None
+        version = entry.get("version")
+        resolved = entry.get("resolved")
+        integrity = entry.get("integrity")
+        if (
+            type(version) is not str or not _EXACT_VERSION.fullmatch(version)
+            or not is_safe_npm_registry_url(resolved, name, version)
+            or not is_sha512_sri(integrity)
+        ):
+            return None
+        evidence.append({
+            "type": "npm-registry-root-dependency",
+            "package": name,
+            "version": version,
+            "resolved": resolved,
+            "integrity": integrity,
+            "role": "root-dependency",
+        })
+    return data["lockfileVersion"], evidence
+
+
+def derive_keytar_native_credential_addon(lock_bytes: bytes) -> tuple[dict | None, str | None]:
+    """Re-derive the sole audited native addon marker from an embedded lock."""
+    try:
+        data = json.loads(lock_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        return None, f"could not parse root npm lock JSON: {exc}"
+    packages = data.get("packages") if type(data) is dict else None
+    if type(packages) is not dict:
+        return None, "root npm lock has no packages object"
+    if "node_modules/keytar" not in packages:
+        return None, None
+    entry = packages.get("node_modules/keytar")
+    if type(entry) is not dict:
+        return None, "node_modules/keytar lock entry is not an object"
+    candidate = {
+        "type": "keytar",
+        "version": entry.get("version"),
+        "resolved": entry.get("resolved"),
+        "integrity": entry.get("integrity"),
+        "hasInstallScript": entry.get("hasInstallScript"),
+    }
+    if is_trusted_keytar_native_credential_addon(candidate):
+        return dict(TRUSTED_KEYTAR_NATIVE_CREDENTIAL_ADDON), None
+    return None, "node_modules/keytar differs from the audited keytar 7.9.0 registry trust anchor"
+
+
+def _node_entry_package(item: dict) -> str | None:
+    recipe = item.get("runtimeRecipe") if type(item.get("runtimeRecipe")) is dict else {}
+    verification = recipe.get("verification") if type(recipe.get("verification")) is dict else {}
+    index = verification.get("argIndex")
+    if type(index) is not int:
+        return None
+    rewrites = item.get("argsPathRewrites") if type(item.get("argsPathRewrites")) is list else []
+    relative = next((entry.get("relativePath") for entry in rewrites
+                     if type(entry) is dict and entry.get("index") == index), None)
+    if type(relative) is not str:
+        return None
+    parts = Path(relative.replace("\\", "/")).parts
+    try:
+        marker = parts.index("node_modules")
+    except ValueError:
+        return None
+    tail = parts[marker + 1:]
+    if not tail:
+        return None
+    package = "/".join(tail[:2]) if tail[0].startswith("@") and len(tail) >= 2 else tail[0]
+    return package if _PACKAGE_NAME.fullmatch(package) else None
+
+
+def node_package_from_entry_arg(value: str) -> str | None:
+    """Extract an npm package name from an absolute node_modules entry path."""
+    normalized = str(value).replace("\\", "/")
+    marker = "/node_modules/"
+    if marker not in normalized:
+        return None
+    tail = normalized.rsplit(marker, 1)[1].strip("/").split("/")
+    if not tail or not tail[0]:
+        return None
+    package = "/".join(tail[:2]) if tail[0].startswith("@") and len(tail) >= 2 else tail[0]
+    return package if _PACKAGE_NAME.fullmatch(package) else None
+
+
+def trusted_node_launch_suffix(package: str | None, version: str | None,
+                               suffix: list[str] | tuple[str, ...]) -> bool:
+    if not suffix:
+        return True
+    expected = TRUSTED_NODE_MCP_LAUNCH_SUFFIXES.get((str(package), str(version)))
+    return expected is not None and tuple(suffix) == expected
+
+
+def node_item_has_trusted_launch_args(item: dict) -> bool:
+    args = item.get("argsTemplate") if type(item.get("argsTemplate")) is list else []
+    if not args:
+        return False
+    package = _node_entry_package(item)
+    installation = item.get("installation") if type(item.get("installation")) is dict else {}
+    provenance = installation.get("packageProvenance")
+    evidence = next(
+        (entry for entry in provenance
+         if type(entry) is dict and entry.get("package") == package), None
+    ) if type(provenance) is list else None
+    return trusted_node_launch_suffix(
+        package, evidence.get("version") if evidence else None, args[1:]
+    )
+
+
+def external_target_template_is_trusted(item: dict) -> bool:
+    key = (item.get("includedBy"), item.get("configClass"))
+    return (
+        item.get("requiresExplicitMapping") is False
+        and item.get("targetTemplate") == TRUSTED_EXTERNAL_TARGETS.get(key)
+    )
+
+
+def local_auto_target_is_trusted(target: object) -> bool:
+    if type(target) is not dict or target.get("requiresExplicitMapping") is not False:
+        return False
+    relative = target.get("relativePath")
+    if type(relative) is not str:
+        return False
+    parts = PurePosixPath(relative.replace("\\", "/")).parts
+    if not parts or ".." in parts:
+        return False
+    if target.get("kind") == "localappdata":
+        return True
+    return target.get("kind") == "home" and len(parts) > 2 and parts[:2] == (".local", "share")
+
+
+def general_home_link_target_is_trusted(relative: Path) -> bool:
+    """Allow legacy absolute links only inside known skill stores."""
+    parts = tuple(part.casefold() for part in relative.parts)
+    prefixes = (
+        (".codex", "skills"),
+        (".agents", "skills"),
+        (".workbuddy", "skills"),
+        ("appdata", "local", "hermes", "skills"),
+        ("appdata", "local", "hermes", "profiles"),
+    )
+    return any(len(parts) >= len(prefix) and parts[:len(prefix)] == prefix for prefix in prefixes)
+
+
+def build_local_mcp_installation(item: dict, lock_bytes: bytes) -> dict:
+    """Derive non-executable hybrid installation data from typed item + lock."""
+    recipe = item["runtimeRecipe"]
+    recipe_type = recipe["type"]
+    lock_path = recipe["lockFile"]
+    provenance: list[dict]
+    trusted_source = None
+    if recipe_type == "python-uv-lock":
+        parsed = parse_hash_locked_requirements(lock_bytes)
+        if parsed is None:
+            raise ValueError("requirements lock is not exact and hash-locked")
+        provenance = parsed
+        runtime = {
+            "name": "python", "version": "3.11", "packageManager": "uv",
+            "recipeType": "python-uv-lock",
+        }
+        lock = {
+            "type": "uv-hash-locked-requirements", "path": lock_path,
+            "sha256": _hash_lock_bytes(lock_bytes), "hashMode": "require-hashes",
+        }
+    elif recipe_type == "node-npm-lock":
+        parsed = parse_npm_root_provenance(lock_bytes)
+        if parsed is None:
+            raise ValueError("npm lock is not a supported package lock")
+        lockfile_version, provenance = parsed
+        entry_package = _node_entry_package(item)
+        entry_evidence = next(
+            (entry for entry in provenance if entry["package"] == entry_package), None
+        )
+        if entry_evidence is not None:
+            trusted_source = {
+                "type": "npm-registry-entry-package",
+                "registryHost": NPM_REGISTRY_HOST,
+                "package": dict(entry_evidence),
+            }
+        runtime = {
+            "name": "node", "packageManager": "npm", "recipeType": "node-npm-lock",
+        }
+        lock = {
+            "type": "npm-package-lock", "path": lock_path,
+            "sha256": _hash_lock_bytes(lock_bytes), "lockfileVersion": lockfile_version,
+        }
+    else:
+        raise ValueError(f"unsupported local MCP recipe: {recipe_type}")
+    target = item["target"]
+    return {
+        "type": "hybrid-portable-v1",
+        "nonExecutable": True,
+        "target": {
+            "mappingId": item["id"],
+            "kind": target["kind"],
+            "relativePath": target.get("relativePath"),
+            "requiresExplicitMapping": target["requiresExplicitMapping"],
+        },
+        "strategyOrder": list(INSTALLATION_STRATEGY_ORDER),
+        "trustedSource": trusted_source,
+        "embeddedSourceFallback": {
+            "type": "ark-archive-source",
+            "archivePrefix": item["archivePrefix"],
+            "lockFile": lock_path,
+            "role": "custom-project-source",
+        },
+        "runtime": runtime,
+        "lock": lock,
+        "packageProvenance": provenance,
+        "healthCheck": dict(recipe["verification"]),
+        "reauthorization": "required",
+    }
 
 # ---------------------------------------------------------------------------
 # 主目录定位
@@ -49,6 +534,54 @@ def workbuddy_home() -> Path:
     return Path(env) if env else home_dir() / ".workbuddy"
 
 
+def hermes_home() -> Path:
+    """Hermes 用户数据根；Windows 原生安装与 Unix 默认布局不同。"""
+    env = os.environ.get("HERMES_HOME")
+    if env:
+        return Path(env)
+    if os.name == "nt":
+        local = os.environ.get("LOCALAPPDATA")
+        if local:
+            return Path(local) / "hermes"
+        return home_dir() / "AppData" / "Local" / "hermes"
+    return home_dir() / ".hermes"
+
+
+def hermes_home_for_user(user_home: Path) -> Path:
+    """把当前操作系统的 Hermes 默认布局映射到指定用户主目录。"""
+    if os.name == "nt":
+        return user_home / "AppData" / "Local" / "hermes"
+    return user_home / ".hermes"
+
+
+def hermes_desktop_home() -> Path:
+    """Electron userData；它与 HERMES_HOME 是两个独立的状态根。"""
+    override = os.environ.get("HERMES_DESKTOP_USER_DATA")
+    if override:
+        return Path(override)
+    if os.name == "nt":
+        roaming = os.environ.get("APPDATA")
+        return (Path(roaming) if roaming else home_dir() / "AppData" / "Roaming") / "Hermes"
+    if sys.platform == "darwin":
+        return home_dir() / "Library" / "Application Support" / "Hermes"
+    xdg = os.environ.get("XDG_CONFIG_HOME")
+    return (Path(xdg) if xdg else home_dir() / ".config") / "Hermes"
+
+
+def hermes_desktop_home_for_user(user_home: Path, platform_name: str | None = None) -> Path:
+    platform_name = platform_name or ("windows" if os.name == "nt" else ("macos" if sys.platform == "darwin" else "linux"))
+    if platform_name == "windows":
+        return user_home / "AppData" / "Roaming" / "Hermes"
+    if platform_name == "macos":
+        return user_home / "Library" / "Application Support" / "Hermes"
+    return user_home / ".config" / "Hermes"
+
+
+def memory_tencentdb_root() -> Path:
+    env = os.environ.get("MEMORY_TENCENTDB_ROOT")
+    return Path(env) if env else home_dir() / ".memory-tencentdb"
+
+
 # ---------------------------------------------------------------------------
 # 排除清单：按"任何级别 / 会话类 / 密钥类"三档拆分
 # - CACHE_DIRS：任何备份级别都排除（缓存、临时、日志、可重建）
@@ -59,13 +592,15 @@ def workbuddy_home() -> Path:
 
 CACHE_DIRS = {
     ".git", ".tmp", ".sandbox", ".sandbox-bin", ".sandbox-secrets",
+    "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox", ".nox",
+    ".venv", "venv", ".runtime", "site-packages",
     "logs", "cache", "blobs", "traces", "tasks", "plans", "teams",
     "app", "vendor", "binaries", "local_storage", "pending-telemetry",
     "audit-log", "artifact-index", "clipboard-images", "shell-snapshots",
     "file-history", "plugin-marketplace-state", "plugin-marketplace-state-new",
     "claw-state", ".workbuddy-sqlite-migrations", "backups",
     "automation-backups", "extensions", "mcp-oauth-locks",
-    "connectors-marketplace",
+    "connectors-marketplace", "node_modules",
 }
 
 # 会话类：full 级别尽力备份本地可见文件；不承诺客户端完整显示
@@ -107,6 +642,9 @@ SECRET_FILE_PATTERNS = [
 # 运行时文件：任何级别都排除
 RUNTIME_FILE_PATTERNS = [
     re.compile(r"^.*\.(sqlite|sqlite3|db|db-shm|db-wal|sqlite-shm|sqlite-wal|tmp|log|ndjson|jsonl)$", re.I),
+    # Process locks only. Do not blanket-match *.lock: requirements.lock,
+    # uv.lock and poetry.lock are deterministic reconstruction inputs.
+    re.compile(r"^(?:\..+\.lock|lock|lockfile|.*\.pid)$", re.I),
     re.compile(r"^.*\.tmp-\d+.*$"),
     re.compile(r"^\.codex-global-state\.json.*$"),
     re.compile(r"^.*\.old-backup-\d+.*$"),      # codex memories 的轮转备份
@@ -116,6 +654,7 @@ RUNTIME_FILE_PATTERNS = [
     re.compile(r"^session_fragment_repair_done.*$"),
     re.compile(r"^user-state\.json$"),
     re.compile(r"^models_cache\.json$"),
+    re.compile(r"^ticker_(?:heartbeat|last_success)$"),
     re.compile(r"^cap_sid$"),
 ]
 
@@ -149,6 +688,32 @@ HIGH_CONFIDENCE_PATTERNS = [
     re.compile(r"-----BEGIN [A-Z0-9 ]+PRIVATE KEY-----"),         # PEM 私钥
     re.compile(r"\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\b"),  # JWT
 ]
+
+def scan_secret_in_file(path: Path, chunk_size: int = 1 << 20) -> list[str]:
+    """Streaming scan for large text/config files without loading them whole."""
+    hits: list[str] = []
+    carry = ""
+    assignment = re.compile(
+        r"(?im)^\s*[A-Za-z_][A-Za-z0-9_.-]*(?:token|secret|password|api[_-]?key|authorization)"
+        r"[A-Za-z0-9_.-]*\s*[:=]\s*\S+"
+    )
+    try:
+        with path.open("rb") as stream:
+            while True:
+                chunk = stream.read(chunk_size)
+                if not chunk:
+                    break
+                text = carry + chunk.decode("utf-8", errors="ignore")
+                for label in scan_secret_in_text(text):
+                    if label not in hits:
+                        hits.append(label)
+                if assignment.search(text) and "sensitive-assignment" not in hits:
+                    hits.append("sensitive-assignment")
+                carry = text[-4096:]
+    except OSError:
+        return ["unreadable-large-file"]
+    return hits
+
 
 # 配置文件中敏感键名（行级/JSON 键级）
 SENSITIVE_KEYS = {
@@ -247,10 +812,21 @@ def redact_json(text: str) -> tuple[str, list[str]]:
                 elif isinstance(v, (dict, list)):
                     walk(v, k)
         elif isinstance(node, list):
-            for item in node:
-                walk(item, key)
+            for index, item in enumerate(list(node)):
+                if isinstance(item, str) and not value_is_placeholder(item):
+                    if any(p.search(item) for p in HIGH_CONFIDENCE_PATTERNS):
+                        node[index] = "${REDACTED_VALUE}"
+                        if "high-confidence-value" not in replaced:
+                            replaced.append("high-confidence-value")
+                elif isinstance(item, (dict, list)):
+                    walk(item, key)
 
-    walk(data)
+    if isinstance(data, str) and not value_is_placeholder(data):
+        if any(p.search(data) for p in HIGH_CONFIDENCE_PATTERNS):
+            data = "${REDACTED_VALUE}"
+            replaced.append("high-confidence-value")
+    else:
+        walk(data)
     out = json.dumps(data, ensure_ascii=False, indent=2)
     changed = out != before
     return out, (replaced if changed else [])
@@ -272,7 +848,12 @@ def redact_lines(text: str) -> tuple[str, list[str]]:
                 continue
         for pat in HIGH_CONFIDENCE_PATTERNS:
             if pat.search(line):
-                out_lines.append("[REDACTED by ark] " + line.strip()[:120])
+                # 绝不把命中行的任何原文带入脱敏副本。旧实现拼接前 120 字符，
+                # 在密钥位于自由文本行时会直接泄露全部或部分凭据。
+                label = "high-confidence-value"
+                if label not in replaced:
+                    replaced.append(label)
+                out_lines.append("[REDACTED by ark: high-confidence-value]")
                 break
         else:
             out_lines.append(line)
@@ -321,10 +902,15 @@ def parse_frontmatter(skill_md: str) -> dict:
 
 
 def detect_skill(dir_path: Path) -> dict | None:
-    """目录含 SKILL.md → 技能。返回技能元数据，否则 None。"""
-    skill_md = dir_path / "SKILL.md"
-    if not skill_md.is_file():
+    """目录含大小写完全匹配的 SKILL.md → 技能。"""
+    try:
+        actual = next((entry for entry in os.scandir(dir_path)
+                       if entry.is_file() and entry.name == "SKILL.md"), None)
+    except OSError:
         return None
+    if actual is None:
+        return None
+    skill_md = Path(actual.path)
     try:
         text = skill_md.read_text(encoding="utf-8", errors="replace")
     except OSError:
@@ -370,7 +956,16 @@ def is_symlink(path: Path) -> bool:
 
 def is_junction(path: Path) -> bool:
     try:
-        return os.path.isjunction(path)
+        checker = getattr(os.path, "isjunction", None)
+        if checker is not None:
+            return bool(checker(path))
+        # Python 3.11 on Windows has no os.path.isjunction, but exposes the
+        # reparse-point file attribute. A directory reparse point that is not
+        # a symlink is a junction for Ark topology purposes.
+        attrs = path.lstat().st_file_attributes
+        return (bool(attrs & stat.FILE_ATTRIBUTE_REPARSE_POINT)
+                and bool(attrs & stat.FILE_ATTRIBUTE_DIRECTORY)
+                and not is_symlink(path))
     except AttributeError:
         return False
     except OSError:
@@ -384,6 +979,11 @@ def link_target(path: Path) -> str | None:
         except OSError:
             return None
     return None
+
+
+def is_link_like(path: Path) -> bool:
+    """True for symlinks and Windows junctions without following the target."""
+    return is_symlink(path) or is_junction(path)
 
 
 def file_kind(path: Path) -> str:
@@ -444,8 +1044,70 @@ def ensure_manifest_structure(manifest: dict) -> dict:
     manifest.setdefault("keptSecrets", [])
     manifest.setdefault("suspicious", [])
     manifest.setdefault("automations", {})
+    manifest.setdefault("artifactClasses", {})
+    manifest.setdefault("externalRoots", [])
+    manifest.setdefault("links", [])
+    manifest.setdefault("softwareInventory", [])
+    manifest.setdefault("projectMappings", [])
+    manifest.setdefault("localMcpProjects", [])
+    manifest.setdefault("postRestoreActions", [])
+    manifest.setdefault("coverageGaps", [])
+    manifest.setdefault("environmentRequirements", [])
     manifest.setdefault("stats", {})
     return manifest
+
+
+def sqlite_readonly(path: Path, immutable: bool = False) -> sqlite3.Connection:
+    """Open an existing SQLite database without creating it or its sidecars."""
+    if not path.is_file():
+        raise FileNotFoundError(path)
+    uri = "file:" + path.resolve().as_posix() + ("?immutable=1" if immutable else "?mode=ro")
+    return sqlite3.connect(uri, uri=True, timeout=5)
+
+
+def hermes_project_folders(db: Path) -> list[dict]:
+    """Read projects.db mappings. immutable avoids touching a live DB's WAL/SHM."""
+    result: list[dict] = []
+    try:
+        con = sqlite_readonly(db, immutable=True)
+        projects = {
+            row[0]: {"id": row[0], "name": row[1], "archived": bool(row[2])}
+            for row in con.execute("SELECT id, name, archived FROM projects")
+        }
+        for project_id, path, label, is_primary in con.execute(
+                "SELECT project_id, path, label, is_primary FROM project_folders"):
+            item = dict(projects.get(project_id, {"id": project_id, "name": project_id, "archived": False}))
+            item.update({"path": str(path), "label": label, "isPrimary": bool(is_primary)})
+            result.append(item)
+        con.close()
+    except (OSError, sqlite3.Error):
+        return []
+    return result
+
+
+def directory_lock_status(lock_path: Path) -> dict:
+    """Best-effort, read-only live-lock probe for Electron/LevelDB stores."""
+    status = {"path": str(lock_path), "exists": lock_path.exists(), "exclusiveRead": None}
+    if not lock_path.exists():
+        return status
+    if os.name != "nt":
+        # Presence is still reported; portable POSIX locking semantics differ.
+        return status
+    try:
+        import ctypes
+        from ctypes import wintypes
+        handle = ctypes.windll.kernel32.CreateFileW(
+            str(lock_path), 0x80000000, 0, None, 3, 0x80, None
+        )
+        invalid = wintypes.HANDLE(-1).value
+        if handle == invalid:
+            status["exclusiveRead"] = False
+        else:
+            status["exclusiveRead"] = True
+            ctypes.windll.kernel32.CloseHandle(handle)
+    except Exception:
+        status["exclusiveRead"] = None
+    return status
 
 
 def extract_zip(zip_path: Path, dest: Path, password: str | None = None) -> None:
@@ -489,7 +1151,7 @@ def extract_zip(zip_path: Path, dest: Path, password: str | None = None) -> None
 def encode_wb_project_dir(p: Path) -> str:
     """把项目路径编码为 workbuddy/projects/ 索引目录名（decode 的逆操作）。
 
-    D:\\workspace\\project → d-workspace-project
+    C:\\Users\\example\\Desktop\\project → c-Users-example-Desktop-project
     注意：路径段含连字符时无法精确还原，仅用于定位对应索引目录。
     """
     drive = p.drive.replace(":", "").lower()
@@ -502,7 +1164,7 @@ def encode_wb_project_dir(p: Path) -> str:
 def decode_wb_project_dir(name: str) -> Path | None:
     """把 workbuddy/projects/ 的索引目录名解码回真实路径。
 
-    'd-workspace-demo' → D:\\workspace\\demo
+    'c-Users-example-Documents-Projects-demo' → C:\\Users\\example\\Documents\\Projects\\demo
     注意：路径段本身含连字符（如 default-2026-07-20）时解码会失真，调用方需用
     exists() 验证；失真项在 --list-projects 中标为 missing，由用户补充真实路径。
     """
