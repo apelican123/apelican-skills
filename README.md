@@ -24,7 +24,7 @@
 |---|---:|---|---|
 | **apelican-ark** | 3.2.3 | 给 Codex、WorkBuddy 和 Hermes 做本地备份；换电脑或重装前先预览，确认后再备份和恢复 | [查看介绍](#apelican-ark) |
 | **apelican-personaforge** | 4.0.1 | 注册 Cloudflare 后，AI 自动在 Workers 部署并给出可接到 ChatGPT 插件的链接 | [查看介绍](#apelican-personaforge) |
-| **apelican-wechat-publisher** | 1.3.4 | 写好 Markdown，自动排版进草稿箱；不会自动群发 | [查看介绍](#apelican-wechat-publisher) |
+| **apelican-wechat-publisher** | 1.3.5 | 付梓：稿成即付梓。写好 Markdown，自动排版进草稿箱 | [查看介绍](#apelican-wechat-publisher) |
 | **apelican-video-to-markdown** | 1.0.4 | 影札：丢一条 B站或 YouTube 链接，整理成能存进笔记的 Markdown | [查看介绍](#apelican-video-to-markdown) |
 
 ## 怎么安装
@@ -127,7 +127,7 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 
 ### apelican-wechat-publisher
 
-> 写好 Markdown，自动排版、配封面，存进公众号草稿箱。粉丝此时还看不见。
+> **付梓**：稿成即付梓。写好 Markdown，自动排版、配封面，存进公众号草稿箱。粉丝此时还看不见。
 
 我做这个技能，是因为写完 Markdown 之后，还要进编辑器调行距、一张张传图、再去好几个长得很像的后台找 AppID。真正劝退的往往不是写作，是「贴」。
 
