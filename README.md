@@ -25,6 +25,7 @@
 | **apelican-ark** | 3.2.0 | 给 Codex、WorkBuddy 和 Hermes 做本地备份；换电脑或重装前先预览，确认后再备份和恢复 | [查看介绍](#apelican-ark) |
 | **apelican-personaforge** | 4.0.1 | 注册 Cloudflare 后，AI 自动在 Workers 部署并给出可接到 ChatGPT 插件的链接 | [查看介绍](#apelican-personaforge) |
 | **apelican-wechat-publisher** | 1.3.0 | 把写好的 Markdown 排成公众号样式，保存到草稿箱；不会自动群发 | [查看介绍](#apelican-wechat-publisher) |
+| **apelican-video-to-markdown** | 1.0.0 | 丢一条 B站或 YouTube 链接，整理成能存进笔记的 Markdown | [查看介绍](#apelican-video-to-markdown) |
 
 ## 怎么安装
 
@@ -150,6 +151,29 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 排版层使用开源工具 [wenyan-cli](https://github.com/caol64/wenyan-cli)（Apache-2.0）。本仓库不捆绑它的源码，需要你自行用 npm 安装。
 
 [查看完整 SKILL.md](./apelican-wechat-publisher/SKILL.md) · [查看简明介绍](./apelican-wechat-publisher/skill-card.md)
+
+### apelican-video-to-markdown
+
+> 丢一条 B站或 YouTube 链接，整理成能存进笔记的 Markdown。
+
+我做这个技能，是因为收藏夹里堆着很多视频，真要回头用时，却不想把整段口播再听一遍。网课、访谈、长吐槽都一样：需要一份能检索、能进笔记的文稿，而不是又一次打开播放器。
+
+它会先查有没有现成字幕。有就只抽字幕，不下载画面；没有再只下载音轨做语音识别，最后写成带摘要、分章和时间戳的 Markdown。默认走必剪云端识别，你也可以改成完全本地的 Whisper。
+
+最短可以这样开始：
+
+1. 安装 Python 3.10+ 和 `yt-dlp`。没有字幕时再装 ffmpeg。
+2. 把技能交给你的 AI，丢一条视频链接，说「整理成笔记」。
+3. 到输出目录拿走 `.md` 文件。
+
+有几个边界需要提前知道：
+
+- 有官方字幕就不下载视频，也不跑识别。
+- 必剪不是官方稳定接口，音频会上传到 B 站。内部会议、未公开内容不要走它。
+- 不绕过大会员、付费墙或 DRM。
+- 语音识别会写错人名和黑话，摘要能用，当引文要自己核对。
+
+[查看完整 SKILL.md](./apelican-video-to-markdown/SKILL.md) · [查看简明介绍](./apelican-video-to-markdown/skill-card.md)
 
 ## 反馈与建议
 
