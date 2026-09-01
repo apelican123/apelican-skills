@@ -14,7 +14,7 @@
 
 处理：`check_env.py` 默认只要求 Python 和 yt-dlp。抽音频 / ASR 时再加 `--require-ffmpeg`。
 
-## B 站 412 不一定是没权限
+## B站 412 不一定是没权限
 
 无 Cookie 时 yt-dlp 拉网页常 412。Chrome 正在运行会锁 Cookie 数据库；Edge 可能 DPAPI 解不开。Firefox 有时是唯一能过的。
 

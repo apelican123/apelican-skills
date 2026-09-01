@@ -25,7 +25,7 @@
 | **apelican-ark** | 3.2.3 | 给 Codex、WorkBuddy 和 Hermes 做本地备份；换电脑或重装前先预览，确认后再备份和恢复 | [查看介绍](#apelican-ark) |
 | **apelican-personaforge** | 4.0.1 | 注册 Cloudflare 后，AI 自动在 Workers 部署并给出可接到 ChatGPT 插件的链接 | [查看介绍](#apelican-personaforge) |
 | **apelican-press** | 1.3.5 | 稿成即付梓。写好 Markdown，自动排版进草稿箱 | [查看介绍](#apelican-press) |
-| **apelican-codex** | 1.0.4 | 丢一条 B站或 YouTube 链接，整理成能存进笔记的 Markdown | [查看介绍](#apelican-codex) |
+| **apelican-codex** | 1.0.5 | 视频转 markdown：丢一条 B站或 YouTube 链接，自动变成能存进笔记的文字稿 | [查看介绍](#apelican-codex) |
 
 ## 怎么安装
 
@@ -154,7 +154,7 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 
 ### apelican-codex
 
-> 丢一条 B站或 YouTube 链接，整理成能存进笔记的 Markdown。适用于：视频总结/转文字/视频笔记/文字笔记/视频转写/B站字幕/视频/markdown/YouTube/字幕/转录
+> 视频转 Markdown：丢一条 B站或 YouTube 链接，自动变成能存进笔记的文字稿。适用于：视频转markdown/视频转文字/视频转笔记/视频转写/视频总结/网课笔记/课程笔记/访谈记录/字幕提取/语音转文字/B站字幕/YouTube字幕
 
 我做这个技能，是因为收藏夹里堆着很多视频，真要回头用时，却不想把整段口播再听一遍。网课、访谈、长吐槽都一样：需要一份能检索、能进笔记的文稿，而不是又一次打开播放器。
 
@@ -169,7 +169,7 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 有几个边界需要提前知道：
 
 - 有官方字幕就不下载视频，也不跑识别。
-- 必剪不是官方稳定接口，音频会上传到 B 站。内部会议、未公开内容不要走它。
+- 必剪不是官方稳定接口，音频会上传到 B站。内部会议、未公开内容不要走它。
 - 不绕过大会员、付费墙或 DRM。
 - 语音识别会写错人名和黑话，摘要能用，当引文要自己核对。
 

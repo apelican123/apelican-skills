@@ -1,14 +1,14 @@
 ---
 slug: apelican-codex
 displayName: 影札
-version: 1.0.4
-summary: 丢一条视频链接，整理成能存进笔记的 Markdown。有字幕就抽字幕，没有再语音识别。适用于：视频总结/转文字/视频笔记/文字笔记/视频转写/B站字幕/视频/markdown/YouTube/字幕/转录
+version: 1.0.5
+summary: 视频转markdown：丢一条B站、YouTube或本地视频链接，自动变成能存进笔记的文字稿。有字幕就抽字幕，没有就语音识别，带摘要和分章，看网课、访谈、长视频不用再拖进度条。适用于：视频转markdown/视频转文字/视频转笔记/视频转写/视频总结/网课笔记/课程笔记/访谈记录/字幕提取/语音转文字/视频太长不想看/收藏夹吃灰
 license: Apache-2.0
 name: apelican-codex
-description: 丢一条 B站或 YouTube 链接，整理成能存进笔记的 Markdown。看网课、补访谈、写课程笔记、做视频总结时用。有官方字幕就直接抽，没有再语音识别。也用于视频转写、Obsidian 笔记、B站字幕、YouTube transcript。适用于：视频总结/转文字/视频笔记/文字笔记/视频转写/B站字幕/视频/markdown/YouTube/字幕/转录
+description: 视频转markdown：丢一条B站或YouTube链接，整理成能存进笔记的Markdown。看网课、补访谈、写课程笔记、做视频总结时用。有官方字幕就直接抽，没有再语音识别。也用于视频转笔记、视频转文字、视频转写、视频摘要、Obsidian笔记、B站字幕、YouTube字幕。适用于：视频转markdown/视频转文字/视频转笔记/视频转写/视频总结/网课笔记/课程笔记/访谈记录/字幕提取/B站字幕/YouTube字幕/语音转文字/视频摘要
 license: Apache-2.0
 metadata:
-  version: "1.0.4"
+  version: "1.0.5"
   type: workflow
 ---
 
@@ -22,7 +22,7 @@ metadata:
 
 - Python 3.10+，以及 `yt-dlp`（`pip install -U yt-dlp`）。
 - 有官方字幕时不需要 ffmpeg。没有字幕、要语音识别时才需要 ffmpeg。
-- 默认识别走必剪云端（音频会上传到 B 站侧服务器）。隐私内容改用本地 Whisper。
+- 默认识别走必剪云端（音频会上传到 B站侧服务器）。隐私内容改用本地 Whisper。
 - 不绕过付费墙、大会员墙、DRM。需要登录的视频，本机浏览器已登录时脚本会自动尝试读取 Cookie。
 
 **先字幕，后识别。先元数据，后下载。只抽音频，不拉整片。** 有可用字幕时禁止下载音视频、禁止跑 ASR。
@@ -104,7 +104,7 @@ metadata:
 
 ## 字幕优先级
 
-B 站：`ai-zh` → `zh-Hans` / `zh-CN` / `zh` → 其他真人轨道（按目标语言）→ 音频+Bcut。永远忽略 `danmaku`。
+B站：`ai-zh` → `zh-Hans` / `zh-CN` / `zh` → 其他真人轨道（按目标语言）→ 音频+Bcut。永远忽略 `danmaku`。
 
 YouTube：人工字幕 → 自动字幕 → 音频+ASR。自动字幕必清洗重复行。
 
@@ -154,7 +154,7 @@ Bcut 成功时对用户写明：转写方式：Bcut ASR（云端，音频已上�
 - 只整理用户有权访问的内容，个人学习笔记
 - 明显私密内容默认不要上传 Bcut；用户已说「用本地」则不上传
 - 不在输出里保存 Cookie、Session、完整环境变量
-- Bcut 是非官方消费级接口，无 SLA，等于把音频传到 B 站侧服务器。风险见 `references/asr-backends.md`
+- Bcut 是非官方消费级接口，无 SLA，等于把音频传到 B站侧服务器。风险见 `references/asr-backends.md`
 
 ## 环境边界（写明做不到的）
 
@@ -166,8 +166,8 @@ Whisper 默认：中文或中英混合用 `small`；纯英文短视频可用 `ba
 
 ## 验收（每次跑完自检）
 
-- B 站有 `ai-zh`：不下音频、不跑 ASR
-- B 站无字幕：只下音频 → Bcut
+- B站有 `ai-zh`：不下音频、不跑 ASR
+- B站无字幕：只下音频 → Bcut
 - YouTube 仅自动字幕：抽自动字幕并去重
 - Bcut 超时：切 Whisper 或诚实失败
 - `b23.tv` 能展开；`p=3` 只处理第 3 P

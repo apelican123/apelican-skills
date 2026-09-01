@@ -138,7 +138,7 @@ def main() -> int:
     download_subs(inp, workdir, args.browser, args.cookies, args.sub_langs, meta)
     files = collect_sub_files(workdir)
     if not files:
-        die("E_NO_MEDIA", "字幕下载后工作目录里没有 srt/vtt。可能要 Cookie（B 站 ai-zh）")
+        die("E_NO_MEDIA", "字幕下载后工作目录里没有 srt/vtt。可能要 Cookie（B站 ai-zh）")
 
     files.sort(key=lambda p: rank_file(p, inp.site))
     chosen = files[0]
