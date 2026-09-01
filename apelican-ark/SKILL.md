@@ -1,8 +1,8 @@
 ---
 name: apelican-ark
-description: 为 Codex、WorkBuddy 和 Hermes 创建可预览、可校验的本地备份，覆盖技能、设置、记忆、自动化与 complete 模式下的 local stdio MCP 依赖闭包，并迁移 Hermes 的腾讯记忆系统；可生成 AES 凭据舱保存静态密钥并按需封装可迁移 OAuth。用于换电脑、重装前存档、恢复 AI 工作环境或检查方舟备份。默认只读预览，明确确认后才写入；不迁移 Cookie、DPAPI/Keychain、Credential Locker 或设备绑定登录态，不承诺会话能在客户端完整显示。
+description: 为 Codex、WorkBuddy 和 Hermes 创建可预览、可校验的本地备份，覆盖技能、设置、记忆、自动化，并可生成 AES 凭据舱。用于换电脑、重装、AI 备份、助手搬家、技能迁移、记忆备份、恢复工作环境或检查方舟备份。默认只读预览，确认后才写入。不迁移 Cookie 和设备绑定登录态。
 metadata:
-  version: "3.2.0"
+  version: "3.2.1"
 ---
 
 # 方舟

@@ -1,6 +1,6 @@
 ---
 name: "apelican-wechat-publisher"
-description: "把 Markdown 排成微信公众号样式并保存到草稿箱。适用于公众号排版、封面配图、草稿箱、wenyan、AppID、IP 白名单。不会自动群发或正式发表。"
+description: "把 Markdown 排成微信公众号样式并保存到草稿箱。用于公众号排版、公众号推文、一键排版、封面配图、草稿箱、Markdown 转公众号、wenyan、AppID。不会自动群发或正式发表。"
 ---
 
 # 公众号全自动排版进草稿箱

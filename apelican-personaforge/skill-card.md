@@ -2,6 +2,8 @@
 
 注册一个 Cloudflare，把 Token 交给 AI，拿到一条能接到 ChatGPT 插件的链接。
 
+也覆盖大家常搜的说法：GPT 插件、ChatGPT 插件、ChatGPT 连接器、MCP、铸造、Cloudflare Workers、自动部署。
+
 ## 你只做两件事
 
 1. 注册/登录 Cloudflare，创建一个只开了 Workers Scripts 编辑权限的 API Token，复制 Account ID。
