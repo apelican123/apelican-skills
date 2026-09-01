@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared helpers for apelican-video-to-markdown scripts."""
+"""Shared helpers for apelican-codex scripts."""
 from __future__ import annotations
 
 import json

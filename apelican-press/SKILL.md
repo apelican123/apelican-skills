@@ -1,10 +1,10 @@
 ---
-slug: apelican-wechat-publisher
+slug: apelican-press
 displayName: 付梓
 version: 1.3.5
 summary: 稿成即付梓。写好 Markdown，自动排版、配封面，存进公众号草稿箱。不群发。适用于：公众号排版/公众号推文/一键排版/封面配图/公众号/排版/推文/草稿箱/Markdown/封面/wenyan/公众号文章/公众号发布
 license: Apache-2.0
-name: "apelican-wechat-publisher"
+name: "apelican-press"
 description: "稿成即付梓。把 Markdown 排成微信公众号样式并保存到草稿箱。用于公众号排版、封面配图、草稿箱、wenyan、AppID、IP 白名单。不会自动群发或正式发表。适用于：公众号排版/公众号推文/一键排版/封面配图/公众号/排版/推文/草稿箱/Markdown/封面/wenyan/公众号文章/公众号发布"
 ---
 

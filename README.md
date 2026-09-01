@@ -24,8 +24,8 @@
 |---|---:|---|---|
 | **apelican-ark** | 3.2.3 | 给 Codex、WorkBuddy 和 Hermes 做本地备份；换电脑或重装前先预览，确认后再备份和恢复 | [查看介绍](#apelican-ark) |
 | **apelican-personaforge** | 4.0.1 | 注册 Cloudflare 后，AI 自动在 Workers 部署并给出可接到 ChatGPT 插件的链接 | [查看介绍](#apelican-personaforge) |
-| **apelican-wechat-publisher** | 1.3.5 | 付梓：稿成即付梓。写好 Markdown，自动排版进草稿箱 | [查看介绍](#apelican-wechat-publisher) |
-| **apelican-video-to-markdown** | 1.0.4 | 影札：丢一条 B站或 YouTube 链接，整理成能存进笔记的 Markdown | [查看介绍](#apelican-video-to-markdown) |
+| **apelican-press** | 1.3.5 | 付梓：稿成即付梓。写好 Markdown，自动排版进草稿箱 | [查看介绍](#apelican-press) |
+| **apelican-codex** | 1.0.4 | 影札：丢一条 B站或 YouTube 链接，整理成能存进笔记的 Markdown | [查看介绍](#apelican-codex) |
 
 ## 怎么安装
 
@@ -33,7 +33,7 @@
 
 ```text
 请帮我安装这个 Skill：
-https://github.com/apelican123/apelican-skills/tree/main/apelican-wechat-publisher
+https://github.com/apelican123/apelican-skills/tree/main/apelican-press
 ```
 
 把最后的技能目录换成你想安装的那个即可。Agent 会把技能放到它实际使用的 skills 目录。如果你的客户端不支持自动安装，也可以手动复制。
@@ -45,7 +45,7 @@ https://github.com/apelican123/apelican-skills/tree/main/apelican-wechat-publish
 
 ```powershell
 git clone https://github.com/apelican123/apelican-skills.git
-$skill = "apelican-wechat-publisher"
+$skill = "apelican-press"
 Copy-Item ".\apelican-skills\$skill" "$env:USERPROFILE\.codex\skills\$skill" -Recurse
 ```
 
@@ -53,7 +53,7 @@ Copy-Item ".\apelican-skills\$skill" "$env:USERPROFILE\.codex\skills\$skill" -Re
 
 ```bash
 git clone https://github.com/apelican123/apelican-skills.git
-skill="apelican-wechat-publisher"
+skill="apelican-press"
 cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 ```
 
@@ -125,7 +125,7 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 
 [查看完整 SKILL.md](./apelican-personaforge/SKILL.md) · [查看使用说明](./apelican-personaforge/skill-card.md)
 
-### apelican-wechat-publisher
+### apelican-press
 
 > **付梓**：稿成即付梓。写好 Markdown，自动排版、配封面，存进公众号草稿箱。粉丝此时还看不见。适用于：公众号排版/公众号推文/一键排版/封面配图/公众号/排版/推文/草稿箱/Markdown/封面/wenyan/公众号文章/公众号发布
 
@@ -150,9 +150,9 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 
 排版层使用开源工具 [wenyan-cli](https://github.com/caol64/wenyan-cli)（Apache-2.0）。本仓库不捆绑它的源码，需要你自行用 npm 安装。
 
-[查看完整 SKILL.md](./apelican-wechat-publisher/SKILL.md) · [查看简明介绍](./apelican-wechat-publisher/skill-card.md)
+[查看完整 SKILL.md](./apelican-press/SKILL.md) · [查看简明介绍](./apelican-press/skill-card.md)
 
-### apelican-video-to-markdown
+### apelican-codex
 
 > **影札**：丢一条 B站或 YouTube 链接，整理成能存进笔记的 Markdown。适用于：视频总结/转文字/视频笔记/文字笔记/视频转写/B站字幕/视频/markdown/YouTube/字幕/转录
 
@@ -173,7 +173,7 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 - 不绕过大会员、付费墙或 DRM。
 - 语音识别会写错人名和黑话，摘要能用，当引文要自己核对。
 
-[查看完整 SKILL.md](./apelican-video-to-markdown/SKILL.md) · [查看简明介绍](./apelican-video-to-markdown/skill-card.md)
+[查看完整 SKILL.md](./apelican-codex/SKILL.md) · [查看简明介绍](./apelican-codex/skill-card.md)
 
 ## 反馈与建议
 

@@ -1,4 +1,4 @@
-# apelican-wechat-publisher
+# apelican-press
 
 把 Markdown 排成微信公众号样式，并保存到草稿箱。
 
