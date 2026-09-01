@@ -1,9 +1,14 @@
 ---
+slug: apelican-personaforge
+displayName: GPT插件铸造器
+version: 4.0.5
+summary: 把已有 API 或 MCP 铸成 ChatGPT 私人插件。Cloudflare 登录后自动部署，给你一条能粘进 ChatGPT 的链接。适用于：GPT插件/ChatGPT连接器/MCP/铸造
+license: Apache-2.0
 name: apelican-personaforge
 description: 用户注册 Cloudflare 后，AI 自动在 Workers 部署 MCP 服务并给出可粘贴进 ChatGPT 插件的 URL。默认铸造模式：设计工具面、生成零依赖 Worker、上传、写 Secret、打开 workers.dev、验证、交付链接。用户提到铸造、GPT 插件、MCP、Cloudflare、自动生成链接时使用。只有提示词没有可调用接口时先说明缺口。适用于：GPT插件/ChatGPT连接器/MCP/铸造
 ---
 
-# Plugin Forge 4.0.1 / 全自动铸造机
+# GPT插件铸造器
 
 小白路径只有三步：
 

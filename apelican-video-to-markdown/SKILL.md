@@ -1,4 +1,9 @@
 ---
+slug: apelican-video-to-markdown
+displayName: 影札
+version: 1.0.4
+summary: 丢一条视频链接，整理成能存进笔记的 Markdown。有字幕就抽字幕，没有再语音识别。适用于：视频总结/转文字/视频笔记/文字笔记/视频转写/B站字幕/视频/markdown/YouTube/字幕/转录
+license: Apache-2.0
 name: apelican-video-to-markdown
 description: 丢一条 B站或 YouTube 链接，整理成能存进笔记的 Markdown。看网课、补访谈、写课程笔记、做视频总结时用。有官方字幕就直接抽，没有再语音识别。也用于视频转写、Obsidian 笔记、B站字幕、YouTube transcript。适用于：视频总结/转文字/视频笔记/文字笔记/视频转写/B站字幕/视频/markdown/YouTube/字幕/转录
 license: Apache-2.0

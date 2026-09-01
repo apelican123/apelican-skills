@@ -65,7 +65,7 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 
 ### apelican-ark
 
-> 给 Codex、WorkBuddy 和 Hermes 做一份看得懂、能检查的本地备份，换电脑或重装后再安全恢复。
+> **方舟**：给 Codex、WorkBuddy 和 Hermes 做一份看得懂、能检查的本地备份，换电脑或重装后再安全恢复。适用于：AI备份/助手搬家/技能迁移/记忆备份/方舟
 
 我做方舟，是因为 AI 工具真正用顺手以后，值得留下来的不只是一个软件，还有自己装过的技能、调好的设置、积累的记忆和自动化。真到换电脑时，如果这些东西都要从头再来，会很麻烦。
 
@@ -92,7 +92,7 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 
 ### apelican-personaforge
 
-> 把你已经有的 API 或 MCP 铸成 ChatGPT 插件：登录 Cloudflare 之后，AI 自动部署，最后给你一条能直接粘进 ChatGPT 的链接。
+> **GPT插件铸造器**：把你已经有的 API 或 MCP 铸成 ChatGPT 插件。登录 Cloudflare 之后，AI 自动部署，最后给你一条能直接粘进 ChatGPT 的链接。适用于：GPT插件/ChatGPT连接器/MCP/铸造
 
 我最开始做这个技能，是因为有些能力已经能在开发环境里调用，但回到普通 ChatGPT 对话时又用不上。4.0 把这件事收成最短路径：你准备好 Cloudflare 账号，说出要接什么服务，剩下的设计、写 Worker、部署和验证由技能自动做完。
 
@@ -127,7 +127,7 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 
 ### apelican-wechat-publisher
 
-> **付梓**：稿成即付梓。写好 Markdown，自动排版、配封面，存进公众号草稿箱。粉丝此时还看不见。
+> **付梓**：稿成即付梓。写好 Markdown，自动排版、配封面，存进公众号草稿箱。粉丝此时还看不见。适用于：公众号排版/公众号推文/一键排版/封面配图/公众号/排版/推文/草稿箱/Markdown/封面/wenyan/公众号文章/公众号发布
 
 我做这个技能，是因为写完 Markdown 之后，还要进编辑器调行距、一张张传图、再去好几个长得很像的后台找 AppID。真正劝退的往往不是写作，是「贴」。
 
@@ -154,7 +154,7 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 
 ### apelican-video-to-markdown
 
-> **影札**：丢一条 B站或 YouTube 链接，整理成能存进笔记的 Markdown。
+> **影札**：丢一条 B站或 YouTube 链接，整理成能存进笔记的 Markdown。适用于：视频总结/转文字/视频笔记/文字笔记/视频转写/B站字幕/视频/markdown/YouTube/字幕/转录
 
 我做这个技能，是因为收藏夹里堆着很多视频，真要回头用时，却不想把整段口播再听一遍。网课、访谈、长吐槽都一样：需要一份能检索、能进笔记的文稿，而不是又一次打开播放器。
 
