@@ -1,13 +1,13 @@
 ---
 name: apelican-video-to-markdown
-description: 丢一条 B站或 YouTube 链接，整理成能存进笔记的 Markdown。看网课、补访谈、写课程笔记、做视频总结时用。有官方字幕就直接抽，没有再语音识别。也用于视频转写、Obsidian 笔记、B站字幕、YouTube transcript。适用于：视频总结/转文字/视频笔记/文字笔记/视频转写/B站字幕
+description: 丢一条 B站或 YouTube 链接，整理成能存进笔记的 Markdown。看网课、补访谈、写课程笔记、做视频总结时用。有官方字幕就直接抽，没有再语音识别。也用于视频转写、Obsidian 笔记、B站字幕、YouTube transcript。适用于：视频总结/转文字/视频笔记/文字笔记/视频转写/B站字幕/视频/markdown/YouTube/字幕/转录
 license: Apache-2.0
 metadata:
-  version: "1.0.3"
+  version: "1.0.4"
   type: workflow
 ---
 
-# 视频转 Markdown
+# 影札
 
 看完一条长视频，却不想把两小时口播再听一遍时用这个技能。丢链接进去，它先查有没有现成字幕；有就直接抽，没有再只下载音轨做语音识别，最后给你一份带摘要、分章和时间戳的 Markdown，可以丢进 Obsidian 或任何笔记库。
 
