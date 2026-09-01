@@ -1,6 +1,6 @@
 ---
 name: apelican-personaforge
-description: 把已有 API 或 MCP 铸成 ChatGPT 私人插件。登录 Cloudflare 后自动在 Workers 部署，给出可粘贴的链接。用于 GPT 插件、ChatGPT 插件、ChatGPT 连接器、MCP、铸造、Cloudflare Workers、自动部署。只有提示词没有可调用接口时先说明缺口。
+description: 用户注册 Cloudflare 后，AI 自动在 Workers 部署 MCP 服务并给出可粘贴进 ChatGPT 插件的 URL。默认铸造模式：设计工具面、生成零依赖 Worker、上传、写 Secret、打开 workers.dev、验证、交付链接。用户提到铸造、GPT 插件、MCP、Cloudflare、自动生成链接时使用。只有提示词没有可调用接口时先说明缺口。适用于：GPT插件/ChatGPT连接器/MCP/铸造
 ---
 
 # Plugin Forge 4.0.1 / 全自动铸造机

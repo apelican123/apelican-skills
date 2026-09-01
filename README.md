@@ -22,10 +22,10 @@
 
 | Skill | 当前版本 | 适合解决什么 | 入口 |
 |---|---:|---|---|
-| **apelican-ark** | 3.2.1 | AI 助手搬家与备份：换电脑、重装、恢复 Codex / WorkBuddy / Hermes | [查看介绍](#apelican-ark) |
-| **apelican-personaforge** | 4.0.1 | 把 API / MCP 铸成 ChatGPT 插件、连接器；Cloudflare 自动部署给链接 | [查看介绍](#apelican-personaforge) |
-| **apelican-wechat-publisher** | 1.3.3 | 公众号全自动排版进草稿箱：Markdown 推文排版、封面配图，不群发 | [查看介绍](#apelican-wechat-publisher) |
-| **apelican-video-to-markdown** | 1.0.1 | 视频总结、转文字、视频笔记：B站 / YouTube 链接变成 Markdown | [查看介绍](#apelican-video-to-markdown) |
+| **apelican-ark** | 3.2.3 | 给 Codex、WorkBuddy 和 Hermes 做本地备份；换电脑或重装前先预览，确认后再备份和恢复 | [查看介绍](#apelican-ark) |
+| **apelican-personaforge** | 4.0.1 | 注册 Cloudflare 后，AI 自动在 Workers 部署并给出可接到 ChatGPT 插件的链接 | [查看介绍](#apelican-personaforge) |
+| **apelican-wechat-publisher** | 1.3.4 | 写好 Markdown，自动排版进草稿箱；不会自动群发 | [查看介绍](#apelican-wechat-publisher) |
+| **apelican-video-to-markdown** | 1.0.3 | 丢一条 B站或 YouTube 链接，整理成能存进笔记的 Markdown | [查看介绍](#apelican-video-to-markdown) |
 
 ## 怎么安装
 
@@ -127,7 +127,7 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 
 ### apelican-wechat-publisher
 
-> 写好 Markdown，全自动排版、配封面，存进公众号草稿箱。粉丝此时还看不见。
+> 写好 Markdown，自动排版、配封面，存进公众号草稿箱。粉丝此时还看不见。
 
 我做这个技能，是因为写完 Markdown 之后，还要进编辑器调行距、一张张传图、再去好几个长得很像的后台找 AppID。真正劝退的往往不是写作，是「贴」。
 

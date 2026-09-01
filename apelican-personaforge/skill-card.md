@@ -1,8 +1,8 @@
-# 个人插件铸造机 · 全自动版
+# GPT插件铸造器
 
 注册一个 Cloudflare，把 Token 交给 AI，拿到一条能接到 ChatGPT 插件的链接。
 
-也覆盖大家常搜的说法：GPT 插件、ChatGPT 插件、ChatGPT 连接器、MCP、铸造、Cloudflare Workers、自动部署。
+适用于：GPT插件/ChatGPT连接器/MCP/铸造
 
 ## 你只做两件事
 
