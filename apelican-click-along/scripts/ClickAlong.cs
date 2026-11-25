@@ -144,7 +144,7 @@ namespace ClickAlong
                     string result = RunStep(target, fixture.Id, new Step { focus = data.hwnd,
                         target_bounds = Edges(bounds), focus_bounds = Edges(bounds),
                         titles = new[] { FixtureTitle, FixtureTitle }, mode = "demo", number = 1,
-                        action = "click", title = "测试桌面点击", instruction = "看紫色框，技能会点击「测试按钮」。",
+                        action = "click", title = "测试桌面点击", instruction = "看红色细框，技能会点击「测试按钮」。",
                         expected = "测试窗口收到点击后自动关闭。", box = data.box });
                     Require(File.Exists(clicked), "The test button did not receive the click.");
                     return Json.Serialize(new { status = "desktop_test_passed", capture = true,
@@ -524,6 +524,7 @@ namespace ClickAlong
         protected static readonly Color TransparentArea = Color.Magenta;
         protected static readonly Color Ink = Color.FromArgb(29, 24, 61);
         protected static readonly Color Accent = Color.FromArgb(101, 70, 235);
+        protected static readonly Color TargetRed = Color.FromArgb(219, 40, 52);
         protected static readonly Color Confirmed = Color.FromArgb(33, 142, 102);
         protected readonly float ScaleFactor;
         private readonly bool clickThrough;
@@ -563,7 +564,7 @@ namespace ClickAlong
         private bool complete;
         internal Outline(Rectangle control, float scale) : base(scale, true, true)
         {
-            control.Inflate(Px(8), Px(8));
+            control.Inflate(Px(5), Px(5));
             Bounds = control;
         }
 
@@ -571,12 +572,10 @@ namespace ClickAlong
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            int margin = Px(4);
-            using (var dark = new Pen(Ink, Px(8)))
-            using (var color = new Pen(complete ? Confirmed : Accent, Px(4)))
+            int margin = Px(2);
+            using (var color = new Pen(complete ? Confirmed : TargetRed, Px(2)))
             {
                 var box = new Rectangle(margin, margin, Width - 2 * margin - 1, Height - 2 * margin - 1);
-                e.Graphics.DrawRectangle(dark, box);
                 e.Graphics.DrawRectangle(color, box);
             }
         }
@@ -597,11 +596,11 @@ namespace ClickAlong
         {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             int pad = Px(5);
-            using (var dark = new Pen(Ink, Px(8)))
-            using (var color = new Pen(complete ? Confirmed : Accent, Px(4)))
+            using (var border = new Pen(Color.White, Px(4)))
+            using (var color = new Pen(complete ? Confirmed : TargetRed, Px(2)))
             {
                 var ring = new Rectangle(pad, pad, Width - 2 * pad, Height - 2 * pad);
-                e.Graphics.DrawEllipse(dark, ring);
+                e.Graphics.DrawEllipse(border, ring);
                 e.Graphics.DrawEllipse(color, ring);
             }
         }

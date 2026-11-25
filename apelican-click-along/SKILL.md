@@ -5,7 +5,7 @@ display_name_en: Click Along
 description: 把 WorkBuddy 的 Windows 桌面操作变成逐步教学。框出要点的按钮或输入框，在大字卡上写清点哪里、输什么、怎么确认。适用于 WPS 等软件的操作演示、陪练和录屏。
 description_zh: AI 每点一步，屏幕上就出现一张教学卡。看清按钮、输入值和核对方法，也能自己跟着点。
 description_en: Watch each WorkBuddy desktop action on Windows, with a highlighted control and clear instructions for what to click, type, and verify. Or follow along yourself.
-version: 1.1.0
+version: 1.1.1
 author: Apelican
 examples_zh:
   - 用跟着操作演示 WPS 把行距改成 1.5 倍，字号改成 16 磅。
