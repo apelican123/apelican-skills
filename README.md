@@ -22,6 +22,7 @@
 
 | Skill | 当前版本 | 适合解决什么 | 入口 |
 |---|---:|---|---|
+| **apelican-click-along** | 1.1.0 | 跟着操作。把 WorkBuddy 在 Windows 上的每次点击、输入和确认变成屏幕上的教学步骤 | [查看介绍](#apelican-click-along) |
 | **apelican-ark** | 3.2.3 | 给 Codex、WorkBuddy 和 Hermes 做本地备份；换电脑或重装前先预览，确认后再备份和恢复 | [查看介绍](#apelican-ark) |
 | **apelican-personaforge** | 4.0.1 | 注册 Cloudflare 后，AI 自动在 Workers 部署并给出可接到 ChatGPT 插件的链接 | [查看介绍](#apelican-personaforge) |
 | **apelican-press** | 1.3.5 | 稿成即付梓。写好 Markdown，自动排版进草稿箱 | [查看介绍](#apelican-press) |
@@ -62,6 +63,19 @@ cp -R "./apelican-skills/$skill" "$HOME/.codex/skills/$skill"
 </details>
 
 ## 技能介绍
+
+### apelican-click-along
+
+> **跟着操作 · Click Along**。AI 点哪里、输入什么、改完该看哪里，直接写在 Windows 桌面上。适用于 WorkBuddy、WPS 软件教程、录屏和跟练。
+
+我让 WorkBuddy 演示 WPS 怎么调行距，文档确实改了，但看不清它刚刚点了哪里。「跟着操作」把过程展开给你看。比如改字号，先框出「字号」输入框，再单独演示输入数值，最后按回车并核对正文。
+
+- **AI 演示**。紫框圈出目标，大字卡分开写「操作」和「核对」。鼠标先指向控件，进度条走完后执行。
+- **自己跟做**。你点框里的按钮，AI 看界面变化再说明下一步。
+
+用你现有的 WorkBuddy 和模型。首次使用会尝试用系统组件编译，并打开一个临时练习窗，核对截图和实际点击能否完成。已在 Windows 11 x64 上验证桌面自检和 WPS 操作。Windows 10、ARM64 及受管设备还没有跨机器实测，安装后请看本机自检结果。
+
+[查看完整 SKILL.md](./apelican-click-along/SKILL.md) · [安装与兼容性](./apelican-click-along/references/windows.md)
 
 ### apelican-ark
 
